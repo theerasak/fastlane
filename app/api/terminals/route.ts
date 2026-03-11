@@ -11,7 +11,7 @@ const CreateTerminalSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession(req)
-    if (!session || (session.role !== 'admin' && session.role !== 'agent')) throw ApiError.forbidden()
+    if (!session || (session.role !== 'admin' && session.role !== 'agent' && session.role !== 'supervisor')) throw ApiError.forbidden()
 
     const supabase = getServerClient()
     const { data, error } = await supabase
