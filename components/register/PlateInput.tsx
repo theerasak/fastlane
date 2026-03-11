@@ -5,33 +5,59 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { HOUR_LABELS } from '@/lib/constants'
+import type { SlotAvailability } from '@/types/api'
 
 interface PlateInputProps {
   onAdd: (licensePlate: string, hourSlot: number) => Promise<void>
   disabled?: boolean
+  slotAvailability: SlotAvailability[]
 }
 
-export function PlateInput({ onAdd, disabled }: PlateInputProps) {
+export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProps) {
   const [plate, setPlate] = useState('')
-  const [hourSlot, setHourSlot] = useState('0')
+  const [hourSlot, setHourSlot] = useState('')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
 
-  const slotOptions = HOUR_LABELS.map((label, i) => ({ value: String(i), label }))
+  // Build slot dropdown: only slots that have remaining capacity > 0
+  const availableSlots = slotAvailability.filter(s => s.remaining_capacity > 0)
+
+  const slotOptions = availableSlots.map(s => ({
+    value: String(s.hour_slot),
+    label: `${HOUR_LABELS[s.hour_slot]} (${s.remaining_capacity} remaining)`,
+  }))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!plate.trim()) return
+    if (!plate.trim()) { setError('Please enter a license plate'); return }
+    if (!hourSlot) { setError('Please select a time slot'); return }
     setError('')
     setAdding(true)
     try {
       await onAdd(plate.trim().toUpperCase(), Number(hourSlot))
       setPlate('')
+      setHourSlot('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add plate')
     } finally {
       setAdding(false)
     }
+  }
+
+  if (slotAvailability.length === 0) {
+    return (
+      <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+        No capacity slots have been configured for this date. Please contact the booking agent.
+      </p>
+    )
+  }
+
+  if (availableSlots.length === 0) {
+    return (
+      <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+        All time slots are full for this date. No more trucks can be registered.
+      </p>
+    )
   }
 
   return (
@@ -43,15 +69,15 @@ export function PlateInput({ onAdd, disabled }: PlateInputProps) {
             value={plate}
             onChange={e => setPlate(e.target.value.toUpperCase())}
             disabled={disabled || adding}
-            error={error}
             data-testid="plate-input"
           />
         </div>
-        <div className="w-32 tablet:w-40">
+        <div className="w-48 tablet:w-56">
           <Select
             value={hourSlot}
             onChange={e => setHourSlot(e.target.value)}
             options={slotOptions}
+            placeholder="Select time slot…"
             disabled={disabled || adding}
             data-testid="hour-slot-select"
           />
@@ -65,6 +91,9 @@ export function PlateInput({ onAdd, disabled }: PlateInputProps) {
           Add
         </Button>
       </div>
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+      )}
     </form>
   )
 }

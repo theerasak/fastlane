@@ -160,13 +160,21 @@ export interface EditPlateRequest {
   license_plate: string
 }
 
+export interface SlotAvailability {
+  hour_slot: number
+  remaining_capacity: number
+}
+
 export interface BookingPublicInfo {
   id: string
   booking_number: string
   num_trucks: number
   terminal_name: string
+  terminal_id: string
+  booking_date: string  // YYYY-MM-DD derived from created_at
   status: BookingStatus
   token_cancelled: boolean
   registrations: RegistrationResponse[]
   active_count: number
+  slot_availability: SlotAvailability[]
 }

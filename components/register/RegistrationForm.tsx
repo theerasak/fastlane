@@ -65,7 +65,7 @@ export function RegistrationForm({ token, initialData }: RegistrationFormProps) 
       {!isFull && (
         <div className="card">
           <h3 className="font-semibold text-gray-900 mb-3">Add Truck</h3>
-          <PlateInput onAdd={handleAdd} disabled={isFull} />
+          <PlateInput onAdd={handleAdd} disabled={isFull} slotAvailability={initialData.slot_availability} />
         </div>
       )}
 

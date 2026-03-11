@@ -15,7 +15,7 @@ async function getBookingInfo(token: string): Promise<BookingPublicInfo | null> 
   const { data: booking, error } = await supabase
     .from('bookings')
     .select(`
-      id, booking_number, num_trucks, status, token_cancelled,
+      id, booking_number, num_trucks, status, token_cancelled, terminal_id, created_at,
       port_terminals(name)
     `)
     .eq('fastlane_token', token)
@@ -23,22 +23,35 @@ async function getBookingInfo(token: string): Promise<BookingPublicInfo | null> 
 
   if (error || !booking) return null
 
-  const { data: registrations } = await supabase
-    .from('fastlane_registrations')
-    .select('id, booking_id, hour_slot, terminal_id, license_plate, is_deleted, registered_at, deleted_at')
-    .eq('booking_id', booking.id)
-    .eq('is_deleted', false)
-    .order('registered_at')
+  const bookingDate = booking.created_at.split('T')[0]
+
+  const [{ data: registrations }, { data: slots }] = await Promise.all([
+    supabase
+      .from('fastlane_registrations')
+      .select('id, booking_id, hour_slot, terminal_id, license_plate, is_deleted, registered_at, deleted_at')
+      .eq('booking_id', booking.id)
+      .eq('is_deleted', false)
+      .order('registered_at'),
+    supabase
+      .from('slot_remaining_capacity')
+      .select('hour_slot, remaining_capacity')
+      .eq('terminal_id', booking.terminal_id)
+      .eq('date', bookingDate)
+      .order('hour_slot'),
+  ])
 
   return {
     id: booking.id,
     booking_number: booking.booking_number,
     num_trucks: booking.num_trucks,
     terminal_name: (booking.port_terminals as unknown as { name: string } | null)?.name ?? 'Unknown',
+    terminal_id: booking.terminal_id,
+    booking_date: bookingDate,
     status: booking.status,
     token_cancelled: booking.token_cancelled,
     registrations: registrations ?? [],
     active_count: (registrations ?? []).length,
+    slot_availability: (slots ?? []) as { hour_slot: number; remaining_capacity: number }[],
   }
 }
 
@@ -99,6 +112,10 @@ export default async function RegisterPage({ params }: Props) {
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Status</p>
               <StatusBadge status={booking.status} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Date</p>
+              <p className="font-medium">{new Date(booking.booking_date + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Trucks Allocated</p>

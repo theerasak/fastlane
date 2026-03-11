@@ -8,7 +8,7 @@ async function getBookingByToken(token: string) {
   const supabase = getServerClient()
   const { data, error } = await supabase
     .from('bookings')
-    .select('id, num_trucks, status, token_cancelled, terminal_id')
+    .select('id, num_trucks, status, token_cancelled, terminal_id, created_at')
     .eq('fastlane_token', token)
     .single()
 
@@ -43,16 +43,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       throw new ApiError('Maximum truck registrations reached', 409, 'MAX_REACHED')
     }
 
-    // Check: slot has remaining capacity
+    // Check: slot has remaining capacity for the booking's date
+    const bookingDate = booking.created_at.split('T')[0]
     const { data: slotData, error: slotError } = await supabase
       .from('slot_remaining_capacity')
       .select('remaining_capacity')
       .eq('terminal_id', booking.terminal_id)
+      .eq('date', bookingDate)
       .eq('hour_slot', hour_slot)
       .single()
 
     if (slotError || !slotData) {
-      throw ApiError.notFound('Capacity slot not found for this terminal/hour')
+      throw ApiError.notFound('Capacity slot not found for this terminal/date/hour. Please contact the booking agent.')
     }
 
     if (slotData.remaining_capacity <= 0) {
