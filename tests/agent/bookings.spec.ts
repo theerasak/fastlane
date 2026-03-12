@@ -5,6 +5,7 @@ test.describe('Agent — Booking Management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, 'agent')
     await page.goto('/bookings')
+    await page.waitForLoadState('networkidle')
   })
 
   test('bookings list page renders', async ({ page }) => {
