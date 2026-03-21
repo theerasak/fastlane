@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import { handleApiError, ApiError } from '@/lib/api/errors'
+import { writeAuditLog } from '@/lib/audit'
 import { z } from 'zod'
 
 const UpdateBookingSchema = z.object({
@@ -66,6 +67,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (parsed.data.status === 'CLOSED') updates.closed_at = new Date().toISOString()
 
     const supabase = getServerClient()
+
+    const { data: before } = await supabase
+      .from('bookings')
+      .select('id, booking_number, status, num_trucks, created_at, booked_at, closed_at')
+      .eq('id', id)
+      .single()
+
     const { data, error } = await supabase
       .from('bookings')
       .update(updates)
@@ -74,6 +82,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .single()
 
     if (error || !data) throw ApiError.notFound('Booking not found')
+
+    await writeAuditLog({
+      table_name: 'bookings',
+      record_id: id,
+      action: 'UPDATE',
+      performed_by: session.id,
+      performed_by_email: session.email,
+      old_data: before ? { ...before } : null,
+      new_data: { ...data },
+    })
 
     return NextResponse.json({ data })
   } catch (err) {

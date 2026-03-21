@@ -26,6 +26,8 @@ export interface CreateUserRequest {
   email: string
   password: string
   role: UserRole
+  contact_person?: string
+  phone?: string
 }
 
 export interface UpdateUserRequest {
@@ -33,6 +35,9 @@ export interface UpdateUserRequest {
   password?: string
   role?: UserRole
   is_active?: boolean
+  is_privileged?: boolean
+  contact_person?: string
+  phone?: string
 }
 
 export interface UserResponse {
@@ -40,6 +45,9 @@ export interface UserResponse {
   email: string
   role: UserRole
   is_active: boolean
+  is_privileged: boolean
+  contact_person: string | null
+  phone: string | null
   created_at: string
 }
 
@@ -64,17 +72,25 @@ export interface TerminalResponse {
 export interface CreateTruckCompanyRequest {
   name: string
   contact_email?: string
+  contact_person?: string
+  phone?: string
 }
 
 export interface UpdateTruckCompanyRequest {
   name?: string
   contact_email?: string
+  contact_person?: string
+  phone?: string
+  is_active?: boolean
 }
 
 export interface TruckCompanyResponse {
   id: string
   name: string
   contact_email: string | null
+  contact_person: string | null
+  phone: string | null
+  is_active: boolean
   created_at: string
 }
 

@@ -14,12 +14,15 @@ CREATE TYPE booking_status AS ENUM ('FILLING-IN', 'BOOKED', 'CLOSED');
 -- ============================================================
 
 CREATE TABLE users (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email         TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  role          user_role NOT NULL DEFAULT 'agent',
-  is_active     BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email          TEXT NOT NULL UNIQUE,
+  password_hash  TEXT NOT NULL,
+  role           user_role NOT NULL DEFAULT 'agent',
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  is_privileged  BOOLEAN NOT NULL DEFAULT FALSE,
+  contact_person TEXT,
+  phone          TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE port_terminals (
@@ -30,10 +33,13 @@ CREATE TABLE port_terminals (
 );
 
 CREATE TABLE truck_companies (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name          TEXT NOT NULL,
-  contact_email TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name           TEXT NOT NULL,
+  contact_email  TEXT,
+  contact_person TEXT,
+  phone          TEXT,
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 24 hourly slots per terminal per day
@@ -79,6 +85,24 @@ CREATE TABLE fastlane_registrations (
 -- Indexes
 -- ============================================================
 
+CREATE TABLE audit_logs (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  table_name         TEXT NOT NULL,
+  record_id          UUID NOT NULL,
+  action             TEXT NOT NULL CHECK (action IN ('CREATE', 'UPDATE', 'DELETE')),
+  performed_by       UUID REFERENCES users(id) ON DELETE SET NULL,
+  performed_by_email TEXT NOT NULL,
+  old_data           JSONB,
+  new_data           JSONB,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- Indexes
+-- ============================================================
+
+CREATE INDEX idx_audit_logs_table_record ON audit_logs (table_name, record_id);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs (created_at DESC);
 CREATE INDEX idx_terminal_capacity_lookup ON terminal_capacity (terminal_id, date);
 CREATE INDEX idx_bookings_status ON bookings (status);
 CREATE INDEX idx_bookings_terminal ON bookings (terminal_id);

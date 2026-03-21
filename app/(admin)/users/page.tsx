@@ -46,8 +46,22 @@ export default function UsersPage() {
       >
         {users.map((user) => (
           <Tr key={user.id}>
-            <Td>{user.email}</Td>
-            <Td><RoleBadge role={user.role} /></Td>
+            <Td>
+              <div>{user.email}</div>
+              {user.contact_person && (
+                <div className="text-xs text-gray-500">{user.contact_person}</div>
+              )}
+            </Td>
+            <Td>
+              <div className="flex flex-wrap gap-1">
+                <RoleBadge role={user.role} />
+                {user.role === 'agent' && user.is_privileged && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                    Privileged
+                  </span>
+                )}
+              </div>
+            </Td>
             <Td>
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                 {user.is_active ? 'Active' : 'Inactive'}

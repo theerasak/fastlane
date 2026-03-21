@@ -27,6 +27,9 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     password: '',
     role: 'agent' as string,
     is_active: true,
+    is_privileged: false,
+    contact_person: '',
+    phone: '',
   })
 
   useEffect(() => {
@@ -35,11 +38,15 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       .then(r => r.json())
       .then(json => {
         if (json.data) {
+          const d: UserResponse = json.data
           setForm({
-            email: json.data.email,
+            email: d.email,
             password: '',
-            role: json.data.role,
-            is_active: json.data.is_active,
+            role: d.role,
+            is_active: d.is_active,
+            is_privileged: d.is_privileged,
+            contact_person: d.contact_person ?? '',
+            phone: d.phone ?? '',
           })
         }
       })
@@ -50,10 +57,19 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     e.preventDefault()
     setSaving(true)
     try {
-      const body: Record<string, unknown> = { email: form.email, role: form.role }
-      if (isNew) body.password = form.password
-      else if (form.password) body.password = form.password
-      if (!isNew) body.is_active = form.is_active
+      const body: Record<string, unknown> = {
+        email: form.email,
+        role: form.role,
+        contact_person: form.contact_person || null,
+        phone: form.phone || null,
+      }
+      if (isNew) {
+        body.password = form.password
+      } else {
+        if (form.password) body.password = form.password
+        body.is_active = form.is_active
+        if (form.role === 'agent') body.is_privileged = form.is_privileged
+      }
 
       const res = await fetch(isNew ? '/api/users' : `/api/users/${id}`, {
         method: isNew ? 'POST' : 'PATCH',
@@ -77,10 +93,15 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this user?')) return
-    await fetch(`/api/users/${id}`, { method: 'DELETE' })
-    showToast('User deleted', 'success')
-    router.push('/users')
+    if (!confirm('Delete this user? This action cannot be undone.')) return
+    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      showToast('User deleted', 'success')
+      router.push('/users')
+    } else {
+      const json = await res.json()
+      showToast(json.error || 'Delete failed', 'error')
+    }
   }
 
   if (loading) return <PageSpinner />
@@ -115,20 +136,46 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
           <Select
             label="Role"
             value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
+            onChange={(e) => setForm({ ...form, role: e.target.value, is_privileged: false })}
             options={ROLE_OPTIONS}
             data-testid="role-select"
           />
+          <Input
+            label="Contact Person"
+            value={form.contact_person}
+            onChange={(e) => setForm({ ...form, contact_person: e.target.value })}
+          />
+          <Input
+            label="Phone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+
           {!isNew && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={form.is_active}
-                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                className="rounded"
-              />
-              <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={form.is_active}
+                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
+              </div>
+              {form.role === 'agent' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_privileged"
+                    checked={form.is_privileged}
+                    onChange={(e) => setForm({ ...form, is_privileged: e.target.checked })}
+                    className="rounded"
+                  />
+                  <label htmlFor="is_privileged" className="text-sm text-gray-700">Privileged Agent</label>
+                </div>
+              )}
             </div>
           )}
 

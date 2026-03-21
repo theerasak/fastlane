@@ -4,6 +4,7 @@ import {
   mockAgent,
   mockTerminal,
   mockBooking,
+  mockCompany,
   mockSlots,
   mockSlotCapacity,
   mockRegistration,
@@ -109,6 +110,22 @@ export const handlers = [
     if (isSingle(request)) return pgrstSingle(mockSlotCapacity[9])
     return HttpResponse.json(mockSlotCapacity)
   }),
+
+  // ── truck_companies ───────────────────────────────────────────────────
+  http.get(`${SUPA}/truck_companies`, ({ request }) => {
+    if (isSingle(request)) return pgrstSingle(mockCompany)
+    return HttpResponse.json([mockCompany])
+  }),
+
+  http.post(`${SUPA}/truck_companies`, async () =>
+    HttpResponse.json(mockCompany, { status: 201 })
+  ),
+
+  http.patch(`${SUPA}/truck_companies`, () => pgrstSingle(mockCompany)),
+  http.delete(`${SUPA}/truck_companies`, () => new HttpResponse(null, { status: 204 })),
+
+  // ── audit_logs ────────────────────────────────────────────────────────
+  http.post(`${SUPA}/audit_logs`, async () => new HttpResponse(null, { status: 201 })),
 
   // ── fastlane_registrations ────────────────────────────────────────────
   http.head(`${SUPA}/fastlane_registrations`, () => pgrstCount(0)),

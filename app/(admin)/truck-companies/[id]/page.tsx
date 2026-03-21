@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { showToast } from '@/components/ui/Toast'
 import { PageSpinner } from '@/components/ui/Spinner'
+import type { TruckCompanyResponse } from '@/types/api'
 
 export default function TruckCompanyDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
@@ -14,14 +15,29 @@ export default function TruckCompanyDetailPage({ params }: { params: { id: strin
 
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', contact_email: '' })
+  const [form, setForm] = useState({
+    name: '',
+    contact_email: '',
+    contact_person: '',
+    phone: '',
+    is_active: true,
+  })
 
   useEffect(() => {
     if (isNew) return
     fetch(`/api/truck-companies/${id}`)
       .then(r => r.json())
       .then(json => {
-        if (json.data) setForm({ name: json.data.name, contact_email: json.data.contact_email ?? '' })
+        if (json.data) {
+          const d: TruckCompanyResponse = json.data
+          setForm({
+            name: d.name,
+            contact_email: d.contact_email ?? '',
+            contact_person: d.contact_person ?? '',
+            phone: d.phone ?? '',
+            is_active: d.is_active,
+          })
+        }
       })
       .finally(() => setLoading(false))
   }, [id, isNew])
@@ -30,10 +46,18 @@ export default function TruckCompanyDetailPage({ params }: { params: { id: strin
     e.preventDefault()
     setSaving(true)
     try {
+      const body: Record<string, unknown> = {
+        name: form.name,
+        contact_email: form.contact_email || null,
+        contact_person: form.contact_person || null,
+        phone: form.phone || null,
+      }
+      if (!isNew) body.is_active = form.is_active
+
       const res = await fetch(isNew ? '/api/truck-companies' : `/api/truck-companies/${id}`, {
         method: isNew ? 'POST' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok) { showToast(json.error || 'Save failed', 'error'); return }
@@ -41,6 +65,18 @@ export default function TruckCompanyDetailPage({ params }: { params: { id: strin
       router.push('/truck-companies')
     } catch { showToast('Network error', 'error') }
     finally { setSaving(false) }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Delete this truck company? This action cannot be undone.')) return
+    const res = await fetch(`/api/truck-companies/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      showToast('Company deleted', 'success')
+      router.push('/truck-companies')
+    } else {
+      const json = await res.json()
+      showToast(json.error || 'Delete failed', 'error')
+    }
   }
 
   if (loading) return <PageSpinner />
@@ -53,9 +89,51 @@ export default function TruckCompanyDetailPage({ params }: { params: { id: strin
       </div>
       <div className="card">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input label="Company Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required data-testid="company-name-input" />
-          <Input label="Contact Email" type="email" value={form.contact_email} onChange={e => setForm({ ...form, contact_email: e.target.value })} data-testid="contact-email-input" />
-          <Button type="submit" loading={saving}>{isNew ? 'Create Company' : 'Save Changes'}</Button>
+          <Input
+            label="Company Name"
+            value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+            required
+            data-testid="company-name-input"
+          />
+          <Input
+            label="Contact Email"
+            type="email"
+            value={form.contact_email}
+            onChange={e => setForm({ ...form, contact_email: e.target.value })}
+            data-testid="contact-email-input"
+          />
+          <Input
+            label="Contact Person"
+            value={form.contact_person}
+            onChange={e => setForm({ ...form, contact_person: e.target.value })}
+          />
+          <Input
+            label="Phone"
+            type="tel"
+            value={form.phone}
+            onChange={e => setForm({ ...form, phone: e.target.value })}
+          />
+          {!isNew && (
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={form.is_active}
+                onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                className="rounded"
+              />
+              <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
+            </div>
+          )}
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" loading={saving}>{isNew ? 'Create Company' : 'Save Changes'}</Button>
+            {!isNew && (
+              <Button type="button" variant="danger" onClick={handleDelete}>
+                Delete
+              </Button>
+            )}
+          </div>
         </form>
       </div>
     </div>

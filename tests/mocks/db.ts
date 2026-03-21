@@ -12,6 +12,9 @@ export const mockAdmin = {
   password_hash: MOCK_HASH,
   role: 'admin' as const,
   is_active: true,
+  is_privileged: false,
+  contact_person: null as string | null,
+  phone: null as string | null,
   created_at: '2024-01-01T00:00:00Z',
 }
 
@@ -21,6 +24,21 @@ export const mockAgent = {
   password_hash: MOCK_HASH,
   role: 'agent' as const,
   is_active: true,
+  is_privileged: false,
+  contact_person: 'John Doe' as string | null,
+  phone: '+66-81-234-5678' as string | null,
+  created_at: '2024-01-01T00:00:00Z',
+}
+
+export const mockPrivilegedAgent = {
+  id: '00000000-0000-0000-0000-000000000004',
+  email: 'agent2@test.com',
+  password_hash: MOCK_HASH,
+  role: 'agent' as const,
+  is_active: true,
+  is_privileged: true,
+  contact_person: 'Jane Smith' as string | null,
+  phone: '+66-81-999-8888' as string | null,
   created_at: '2024-01-01T00:00:00Z',
 }
 
@@ -30,6 +48,21 @@ export const mockSupervisor = {
   password_hash: MOCK_HASH,
   role: 'supervisor' as const,
   is_active: true,
+  is_privileged: false,
+  contact_person: null as string | null,
+  phone: null as string | null,
+  created_at: '2024-01-01T00:00:00Z',
+}
+
+export const mockInactiveUser = {
+  id: '00000000-0000-0000-0000-000000000005',
+  email: 'inactive@test.com',
+  password_hash: MOCK_HASH,
+  role: 'agent' as const,
+  is_active: false,
+  is_privileged: false,
+  contact_person: null as string | null,
+  phone: null as string | null,
   created_at: '2024-01-01T00:00:00Z',
 }
 
@@ -44,6 +77,19 @@ export const mockCompany = {
   id: '00000000-0000-0000-0000-000000000020',
   name: 'Test Trucking Co',
   contact_email: 'test@trucking.com',
+  contact_person: 'Alice Manager' as string | null,
+  phone: '+66-2-345-6789' as string | null,
+  is_active: true,
+  created_at: '2024-01-01T00:00:00Z',
+}
+
+export const mockInactiveCompany = {
+  id: '00000000-0000-0000-0000-000000000021',
+  name: 'Inactive Trucking Co',
+  contact_email: null as string | null,
+  contact_person: null as string | null,
+  phone: null as string | null,
+  is_active: false,
   created_at: '2024-01-01T00:00:00Z',
 }
 

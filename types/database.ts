@@ -7,6 +7,9 @@ export interface DbUser {
   password_hash: string
   role: UserRole
   is_active: boolean
+  is_privileged: boolean
+  contact_person: string | null
+  phone: string | null
   created_at: string
 }
 
@@ -21,6 +24,21 @@ export interface DbTruckCompany {
   id: string
   name: string
   contact_email: string | null
+  contact_person: string | null
+  phone: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export interface DbAuditLog {
+  id: string
+  table_name: string
+  record_id: string
+  action: 'CREATE' | 'UPDATE' | 'DELETE'
+  performed_by: string | null
+  performed_by_email: string
+  old_data: Record<string, unknown> | null
+  new_data: Record<string, unknown> | null
   created_at: string
 }
 

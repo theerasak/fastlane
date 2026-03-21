@@ -31,11 +31,20 @@ export default function TruckCompaniesPage() {
         </Link>
       </div>
 
-      <Table headers={['Name', 'Contact Email', 'Created', 'Actions']} isEmpty={companies.length === 0}>
+      <Table headers={['Name', 'Contact', 'Phone', 'Status', 'Created', 'Actions']} isEmpty={companies.length === 0}>
         {companies.map((c) => (
           <Tr key={c.id}>
-            <Td className="font-medium">{c.name}</Td>
-            <Td className="text-gray-500">{c.contact_email || '—'}</Td>
+            <Td>
+              <div className="font-medium">{c.name}</div>
+              {c.contact_email && <div className="text-xs text-gray-500">{c.contact_email}</div>}
+            </Td>
+            <Td className="text-gray-500">{c.contact_person || '—'}</Td>
+            <Td className="text-gray-500">{c.phone || '—'}</Td>
+            <Td>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {c.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </Td>
             <Td className="text-gray-500">{new Date(c.created_at).toLocaleDateString()}</Td>
             <Td>
               <Link href={`/truck-companies/${c.id}`} className="text-blue-600 hover:underline text-sm">Edit</Link>
