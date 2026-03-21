@@ -182,6 +182,67 @@ test.describe('Truck Company Form — edit record', () => {
   })
 })
 
+// ── Truck company disable & delete — bug regression ──────────────────────────
+
+test.describe('Truck Company — disable and delete', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAs(page, 'admin')
+  })
+
+  test('disabling a company (null contact_email) succeeds and navigates back to list', async ({
+    page,
+  }) => {
+    // Single handler for all methods — GET loads data, PATCH returns success
+    await page.route(`/api/truck-companies/${MOCK_COMPANY_ID}`, route => {
+      if (route.request().method() === 'PATCH')
+        return route.fulfill({ json: { data: { ...companyData, contact_email: null, is_active: false } } })
+      return route.fulfill({ json: { data: { ...companyData, contact_email: null } } })
+    })
+
+    await page.goto(`/truck-companies/${MOCK_COMPANY_ID}`)
+    await expect(page.getByLabel('Active')).toBeVisible()
+
+    await page.getByLabel('Active').uncheck()
+    await page.getByRole('button', { name: 'Save Changes' }).click()
+
+    await expect(page).toHaveURL(/\/truck-companies$/)
+  })
+
+  test('deleting a company with bookings shows a friendly error', async ({ page }) => {
+    await page.route(`/api/truck-companies/${MOCK_COMPANY_ID}`, route => {
+      if (route.request().method() === 'DELETE')
+        return route.fulfill({
+          status: 400,
+          json: { error: 'Cannot delete: this company has existing bookings. Disable it instead.' },
+        })
+      return route.fulfill({ json: { data: companyData } })
+    })
+
+    await page.goto(`/truck-companies/${MOCK_COMPANY_ID}`)
+
+    page.on('dialog', dialog => dialog.accept())
+    await page.getByRole('button', { name: 'Delete' }).click()
+
+    // Stays on edit page, does not navigate away
+    await expect(page).toHaveURL(new RegExp(MOCK_COMPANY_ID))
+  })
+
+  test('deleting a company without bookings succeeds and navigates to list', async ({ page }) => {
+    await page.route(`/api/truck-companies/${MOCK_COMPANY_ID}`, route => {
+      if (route.request().method() === 'DELETE')
+        return route.fulfill({ json: { ok: true } })
+      return route.fulfill({ json: { data: companyData } })
+    })
+
+    await page.goto(`/truck-companies/${MOCK_COMPANY_ID}`)
+
+    page.on('dialog', dialog => dialog.accept())
+    await page.getByRole('button', { name: 'Delete' }).click()
+
+    await expect(page).toHaveURL(/\/truck-companies$/)
+  })
+})
+
 // ── Truck companies list — columns ────────────────────────────────────────────
 
 test.describe('Truck Companies List — display', () => {

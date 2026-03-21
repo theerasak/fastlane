@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 const UpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  contact_email: z.string().email().optional().or(z.literal('')),
+  contact_email: z.string().email().or(z.literal('')).optional().nullable(),
   contact_person: z.string().max(200).optional().nullable(),
   phone: z.string().max(50).optional().nullable(),
   is_active: z.boolean().optional(),
@@ -106,7 +106,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { error } = await supabase.from('truck_companies').delete().eq('id', id)
 
-    if (error) throw ApiError.internal(error.message)
+    if (error) {
+      if (error.code === '23503') throw ApiError.badRequest('Cannot delete: this company has existing bookings. Disable it instead.')
+      throw ApiError.internal(error.message)
+    }
 
     await writeAuditLog({
       table_name: 'truck_companies',

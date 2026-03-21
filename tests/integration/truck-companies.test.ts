@@ -175,6 +175,27 @@ describe('PATCH /api/truck-companies/[id]', () => {
     expect(body.data.is_active).toBe(false)
   })
 
+  it('can disable a company when contact_email is null (bug fix: null was rejected by schema)', async () => {
+    server.use(
+      http.patch(`${SUPA}/truck_companies`, () =>
+        pgrstSingle({ ...mockCompany, is_active: false, contact_email: null })
+      )
+    )
+    // Simulates the form submitting name + null contact_email + is_active=false
+    const req = await createAuthRequest(
+      `http://localhost/api/truck-companies/${mockCompany.id}`,
+      {
+        role: 'admin',
+        method: 'PATCH',
+        body: { name: mockCompany.name, contact_email: null, is_active: false },
+      }
+    )
+    const res = await patchCompany(req, { params: Promise.resolve({ id: mockCompany.id }) })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.is_active).toBe(false)
+  })
+
   it('can re-enable a disabled company (is_active=true)', async () => {
     server.use(
       http.get(`${SUPA}/truck_companies`, () => pgrstSingle(mockInactiveCompany)),
@@ -275,6 +296,25 @@ describe('DELETE /api/truck-companies/[id]', () => {
       params: Promise.resolve({ id: mockInactiveCompany.id }),
     })
     expect(res.status).toBe(200)
+  })
+
+  it('returns 400 with helpful message when company has bookings (FK constraint)', async () => {
+    server.use(
+      http.delete(`${SUPA}/truck_companies`, () =>
+        HttpResponse.json(
+          { code: '23503', message: 'violates foreign key constraint' },
+          { status: 409 }
+        )
+      )
+    )
+    const req = await createAuthRequest(
+      `http://localhost/api/truck-companies/${mockCompany.id}`,
+      { role: 'admin', method: 'DELETE' }
+    )
+    const res = await deleteCompany(req, { params: Promise.resolve({ id: mockCompany.id }) })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/existing bookings/i)
   })
 
   it('returns 403 for agent role', async () => {

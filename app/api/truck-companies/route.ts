@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 const CreateSchema = z.object({
   name: z.string().min(1).max(200),
-  contact_email: z.string().email().optional().or(z.literal('')),
+  contact_email: z.string().email().or(z.literal('')).optional().nullable(),
   contact_person: z.string().max(200).optional(),
   phone: z.string().max(50).optional(),
 })
