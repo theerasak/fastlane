@@ -193,7 +193,8 @@ export interface BookingPublicInfo {
   num_trucks: number
   terminal_name: string
   terminal_id: string
-  booking_date: string  // YYYY-MM-DD derived from created_at
+  booking_date: string  // YYYY-MM-DD
+  is_privileged_booking: boolean
   status: BookingStatus
   token_cancelled: boolean
   registrations: RegistrationResponse[]

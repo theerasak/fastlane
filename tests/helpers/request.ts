@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { signJwt } from '@/lib/auth/jwt'
-import { COOKIE_NAME } from '@/lib/constants'
+import { signTcJwt } from '@/lib/auth/tc-session'
+import { COOKIE_NAME, TC_COOKIE_NAME } from '@/lib/constants'
+import { mockCompany } from '../mocks/db'
 
 type Role = 'admin' | 'agent' | 'supervisor'
 
@@ -35,6 +37,22 @@ export function createRequest(
   options: { method?: string; body?: unknown; headers?: Record<string, string> } = {}
 ): NextRequest {
   const { method = 'GET', body, headers = {} } = options
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  return new NextRequest(url, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+}
+
+/** Creates a NextRequest with a valid TC session cookie for the mock company. */
+export async function createTcRequest(
+  url: string,
+  options: { method?: string; body?: unknown } = {}
+): Promise<NextRequest> {
+  const { method = 'GET', body } = options
+  const token = await signTcJwt({ truck_company_id: mockCompany.id, name: mockCompany.name })
+  const headers: Record<string, string> = { Cookie: `${TC_COOKIE_NAME}=${token}` }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   return new NextRequest(url, {
     method,

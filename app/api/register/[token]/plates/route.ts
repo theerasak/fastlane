@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { handleApiError, ApiError } from '@/lib/api/errors'
-import { AddPlateSchema, EditPlateSchema } from '@/lib/validations/register'
-import { z } from 'zod'
+import { AddPlateSchema, EditRegistrationSchema } from '@/lib/validations/register'
+import { getTcSession } from '@/lib/auth/tc-session'
+
+function isWithinDeadline(bookingDate: string, hourSlot: number, bufferHours: number): boolean {
+  // slot starts at hourSlot:00 UTC on bookingDate
+  const slotMs = new Date(`${bookingDate}T${String(hourSlot).padStart(2, '0')}:00:00Z`).getTime()
+  return Date.now() < slotMs - bufferHours * 3600 * 1000
+}
 
 async function getBookingByToken(token: string) {
   const supabase = getServerClient()
   const { data, error } = await supabase
     .from('bookings')
-    .select('id, num_trucks, status, token_cancelled, terminal_id, created_at, is_privileged_booking')
+    .select('id, num_trucks, status, token_cancelled, terminal_id, booking_date, is_privileged_booking, truck_company_id')
     .eq('fastlane_token', token)
     .single()
 
@@ -22,8 +28,13 @@ async function getBookingByToken(token: string) {
 // POST — add a new plate
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
+    const tcSession = await getTcSession(req)
+    if (!tcSession) throw ApiError.unauthorized()
+
     const { token } = await params
     const booking = await getBookingByToken(token)
+
+    if (booking.truck_company_id !== tcSession.truck_company_id) throw ApiError.forbidden()
 
     const body = await req.json()
     const parsed = AddPlateSchema.safeParse(body)
@@ -44,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     }
 
     // Check: slot has remaining capacity for the booking's date (in the correct pool)
-    const bookingDate = booking.created_at.split('T')[0]
+    const bookingDate = (booking as unknown as { booking_date: string }).booking_date
     const { data: slotData, error: slotError } = await supabase
       .from('slot_remaining_capacity')
       .select('remaining_capacity_privileged, remaining_capacity_non_privileged')
@@ -101,24 +112,92 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   }
 }
 
-// PATCH — edit a plate's license_plate by registration id
+// PATCH — edit a plate's license_plate and/or hour_slot by registration id
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
+    const tcSession = await getTcSession(req)
+    if (!tcSession) throw ApiError.unauthorized()
+
     const { token } = await params
     const booking = await getBookingByToken(token)
+
+    if (booking.truck_company_id !== tcSession.truck_company_id) throw ApiError.forbidden()
 
     const { searchParams } = req.nextUrl
     const registrationId = searchParams.get('id')
     if (!registrationId) throw ApiError.badRequest('Registration id is required')
 
     const body = await req.json()
-    const parsed = EditPlateSchema.safeParse(body)
+    const parsed = EditRegistrationSchema.safeParse(body)
     if (!parsed.success) throw ApiError.badRequest(parsed.error.issues[0]?.message)
 
     const supabase = getServerClient()
+    const bookingDate = (booking as unknown as { booking_date: string }).booking_date
+
+    // Fetch current registration to get current hour_slot
+    const { data: currentReg, error: regError } = await supabase
+      .from('fastlane_registrations')
+      .select('id, hour_slot, license_plate')
+      .eq('id', registrationId)
+      .eq('booking_id', booking.id)
+      .eq('is_deleted', false)
+      .single()
+
+    if (regError || !currentReg) throw ApiError.notFound('Registration not found')
+
+    const newHourSlot = parsed.data.hour_slot
+    const newLicensePlate = parsed.data.license_plate
+
+    const updateFields: Record<string, unknown> = {}
+
+    if (newHourSlot !== undefined && newHourSlot !== currentReg.hour_slot) {
+      // Changing slot: must be >12h before the new slot
+      if (!isWithinDeadline(bookingDate, newHourSlot, 12)) {
+        throw new ApiError('Cannot change slot: new slot time must be more than 12 hours in advance', 409, 'DEADLINE_PASSED')
+      }
+
+      // Check capacity for new slot
+      const { data: slotData, error: slotError } = await supabase
+        .from('slot_remaining_capacity')
+        .select('remaining_capacity_privileged, remaining_capacity_non_privileged')
+        .eq('terminal_id', booking.terminal_id)
+        .eq('date', bookingDate)
+        .eq('hour_slot', newHourSlot)
+        .single()
+
+      if (slotError || !slotData) {
+        throw ApiError.notFound('Capacity slot not found for this terminal/date/hour.')
+      }
+
+      const remaining = booking.is_privileged_booking
+        ? slotData.remaining_capacity_privileged
+        : slotData.remaining_capacity_non_privileged
+
+      if (remaining <= 0) {
+        throw new ApiError('No remaining capacity in the target slot', 409, 'SLOT_FULL')
+      }
+
+      updateFields.hour_slot = newHourSlot
+    } else if (newHourSlot === undefined || newHourSlot === currentReg.hour_slot) {
+      // Only plate is changing: must be >1h before the current slot
+      if (newLicensePlate !== undefined) {
+        if (!isWithinDeadline(bookingDate, currentReg.hour_slot, 1)) {
+          throw new ApiError('Cannot change plate: slot time must be more than 1 hour in advance', 409, 'DEADLINE_PASSED')
+        }
+      }
+    }
+
+    if (newLicensePlate !== undefined) {
+      updateFields.license_plate = newLicensePlate
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      throw ApiError.badRequest('No changes provided')
+    }
+
     const { data, error } = await supabase
       .from('fastlane_registrations')
-      .update({ license_plate: parsed.data.license_plate })
+      .update(updateFields)
       .eq('id', registrationId)
       .eq('booking_id', booking.id)
       .eq('is_deleted', false)
@@ -137,8 +216,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
 // DELETE — soft-delete a registration
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
+    const tcSession = await getTcSession(req)
+    if (!tcSession) throw ApiError.unauthorized()
+
     const { token } = await params
     const booking = await getBookingByToken(token)
+
+    if (booking.truck_company_id !== tcSession.truck_company_id) throw ApiError.forbidden()
 
     const { searchParams } = req.nextUrl
     const registrationId = searchParams.get('id')

@@ -13,6 +13,16 @@ interface PlateInputProps {
   slotAvailability: SlotAvailability[]
 }
 
+function formatPlateInput(raw: string): string {
+  const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  if (clean.length <= 2) return clean
+  // Insert dash after 2nd or 3rd alphanumeric char
+  const prefix = clean.slice(0, Math.min(clean.length, 3))
+  const digits = clean.slice(prefix.length)
+  if (digits.length === 0) return prefix
+  return `${prefix}-${digits.slice(0, 4)}`
+}
+
 export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProps) {
   const [plate, setPlate] = useState('')
   const [hourSlot, setHourSlot] = useState('')
@@ -65,9 +75,9 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
       <div className="flex gap-2">
         <div className="flex-1">
           <Input
-            placeholder="ABC-1234"
+            placeholder="AB-1234"
             value={plate}
-            onChange={e => setPlate(e.target.value.toUpperCase())}
+            onChange={e => setPlate(formatPlateInput(e.target.value))}
             disabled={disabled || adding}
             data-testid="plate-input"
           />

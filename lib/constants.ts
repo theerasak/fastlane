@@ -28,6 +28,7 @@ export const ROLE_LABELS: Record<string, string> = {
 }
 
 export const COOKIE_NAME = 'fms_session'
+export const TC_COOKIE_NAME = 'fms_tc_session'
 export const JWT_TTL_SECONDS = 8 * 60 * 60 // 8 hours
 
 export const CRON_CLOSE_DAYS = 3 // auto-close bookings 3 days after booked_at

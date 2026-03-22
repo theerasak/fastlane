@@ -80,6 +80,7 @@ export const mockCompany = {
   contact_person: 'Alice Manager' as string | null,
   phone: '+66-2-345-6789' as string | null,
   is_active: true,
+  password_hash: MOCK_HASH,
   created_at: '2024-01-01T00:00:00Z',
 }
 
@@ -103,6 +104,7 @@ export const mockBooking = {
   token_cancelled: false,
   is_privileged_booking: false,
   status: 'FILLING-IN' as const,
+  booking_date: BOOKING_DATE,
   created_at: `${BOOKING_DATE}T08:00:00Z`,
   booked_at: null,
   closed_at: null,

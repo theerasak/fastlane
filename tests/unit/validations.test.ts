@@ -3,35 +3,35 @@ import { LicensePlateSchema, AddPlateSchema, EditPlateSchema } from '@/lib/valid
 
 describe('LicensePlateSchema', () => {
   it('accepts valid plates', () => {
-    const valid = ['ABC-1234', 'XYZ 999', 'A1', 'TH-1234-AB', '1234567890']
+    const valid = ['AB-1234', 'ABC-1234', 'XY-9999', 'A1-0000']
     for (const plate of valid) {
       expect(() => LicensePlateSchema.parse(plate)).not.toThrow()
     }
   })
 
   it('passes uppercase input unchanged', () => {
-    const result = LicensePlateSchema.parse('ABC-123')
-    expect(result).toBe('ABC-123')
+    const result = LicensePlateSchema.parse('ABC-1234')
+    expect(result).toBe('ABC-1234')
   })
 
   it('rejects lowercase input (regex validates before transform)', () => {
-    expect(() => LicensePlateSchema.parse('abc-123')).toThrow()
+    expect(() => LicensePlateSchema.parse('abc-1234')).toThrow()
   })
 
   it('rejects empty string', () => {
     expect(() => LicensePlateSchema.parse('')).toThrow()
   })
 
-  it('rejects plate longer than 20 chars', () => {
-    expect(() => LicensePlateSchema.parse('A'.repeat(21))).toThrow()
+  it('rejects plates not matching format (too short digits)', () => {
+    expect(() => LicensePlateSchema.parse('AB-123')).toThrow()
   })
 
   it('rejects plates starting with special char', () => {
-    expect(() => LicensePlateSchema.parse('-ABC123')).toThrow()
+    expect(() => LicensePlateSchema.parse('-ABC1234')).toThrow()
   })
 
   it('rejects plates with invalid chars like @', () => {
-    expect(() => LicensePlateSchema.parse('ABC@123')).toThrow()
+    expect(() => LicensePlateSchema.parse('AB@1234')).toThrow()
   })
 })
 
@@ -57,11 +57,22 @@ describe('AddPlateSchema', () => {
 
 describe('EditPlateSchema', () => {
   it('accepts valid license_plate', () => {
-    const result = EditPlateSchema.parse({ license_plate: 'XYZ-99' })
-    expect(result.license_plate).toBe('XYZ-99')
+    const result = EditPlateSchema.parse({ license_plate: 'XY-9999' })
+    expect(result.license_plate).toBe('XY-9999')
   })
 
-  it('rejects missing license_plate', () => {
+  it('accepts valid hour_slot only', () => {
+    const result = EditPlateSchema.parse({ hour_slot: 10 })
+    expect(result.hour_slot).toBe(10)
+  })
+
+  it('accepts both license_plate and hour_slot', () => {
+    const result = EditPlateSchema.parse({ license_plate: 'AB-1234', hour_slot: 5 })
+    expect(result.license_plate).toBe('AB-1234')
+    expect(result.hour_slot).toBe(5)
+  })
+
+  it('rejects when both license_plate and hour_slot are missing', () => {
     expect(() => EditPlateSchema.parse({})).toThrow()
   })
 })

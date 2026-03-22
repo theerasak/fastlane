@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getServerClient } from '@/lib/supabase/server'
+import { getTcSessionFromCookies } from '@/lib/auth/tc-session'
 import { RegistrationForm } from '@/components/register/RegistrationForm'
 import { ToastContainer } from '@/components/ui/Toast'
 import { StatusBadge } from '@/components/ui/Badge'
@@ -10,20 +11,27 @@ interface Props {
 }
 
 async function getBookingInfo(token: string): Promise<BookingPublicInfo | null> {
+  const tcSession = await getTcSessionFromCookies()
+  if (!tcSession) {
+    redirect(`/register/login?next=/register/${token}`)
+  }
+
   const supabase = getServerClient()
 
   const { data: booking, error } = await supabase
     .from('bookings')
     .select(`
-      id, booking_number, num_trucks, status, token_cancelled, terminal_id, created_at,
-      is_privileged_booking, port_terminals(name)
+      id, booking_number, num_trucks, status, token_cancelled, terminal_id, booking_date,
+      is_privileged_booking, truck_company_id, port_terminals(name)
     `)
     .eq('fastlane_token', token)
     .single()
 
   if (error || !booking) return null
 
-  const bookingDate = booking.created_at.split('T')[0]
+  if (booking.truck_company_id !== tcSession.truck_company_id) return null
+
+  const bookingDate = (booking as unknown as { booking_date: string }).booking_date
 
   const [{ data: registrations }, { data: slots }] = await Promise.all([
     supabase
@@ -54,6 +62,7 @@ async function getBookingInfo(token: string): Promise<BookingPublicInfo | null> 
     terminal_name: (booking.port_terminals as unknown as { name: string } | null)?.name ?? 'Unknown',
     terminal_id: booking.terminal_id,
     booking_date: bookingDate,
+    is_privileged_booking: isPrivileged,
     status: booking.status,
     token_cancelled: booking.token_cancelled,
     registrations: registrations ?? [],
@@ -132,6 +141,14 @@ export default async function RegisterPage({ params }: Props) {
               <p className="text-xs text-gray-500 uppercase tracking-wide">Registered</p>
               <p className="font-medium">{booking.active_count} / {booking.num_trucks}</p>
             </div>
+            {booking.is_privileged_booking && (
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Payment</p>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                  Paid by Agent
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

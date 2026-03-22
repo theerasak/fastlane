@@ -39,6 +39,7 @@ CREATE TABLE truck_companies (
   contact_person TEXT,
   phone          TEXT,
   is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  password_hash  TEXT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -67,6 +68,7 @@ CREATE TABLE bookings (
   token_cancelled      BOOLEAN NOT NULL DEFAULT FALSE,
   is_privileged_booking BOOLEAN NOT NULL DEFAULT FALSE,
   status               booking_status NOT NULL DEFAULT 'FILLING-IN',
+  booking_date         DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   booked_at            TIMESTAMPTZ,
   closed_at            TIMESTAMPTZ
@@ -148,7 +150,7 @@ LEFT JOIN fastlane_registrations fr
 LEFT JOIN bookings b
   ON b.id = fr.booking_id
   AND b.terminal_id = tc.terminal_id
-  AND DATE(b.created_at AT TIME ZONE 'UTC') = tc.date
+  AND b.booking_date = tc.date
 GROUP BY tc.terminal_id, tc.date, tc.hour_slot, tc.capacity_privileged, tc.capacity_non_privileged, tc.last_updated_at;
 
 -- ============================================================

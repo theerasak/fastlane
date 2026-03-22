@@ -11,6 +11,7 @@ const UpdateSchema = z.object({
   contact_person: z.string().max(200).optional().nullable(),
   phone: z.string().max(50).optional().nullable(),
   is_active: z.boolean().optional(),
+  password: z.string().min(6).optional(),  // admin can set/reset TC password
 })
 
 const TC_FIELDS = 'id, name, contact_email, contact_person, phone, is_active, created_at'
@@ -62,6 +63,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (parsed.data.contact_person !== undefined) updates.contact_person = parsed.data.contact_person
     if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone
     if (parsed.data.is_active !== undefined) updates.is_active = parsed.data.is_active
+    if (parsed.data.password) {
+      const bcrypt = await import('bcryptjs')
+      updates.password_hash = await bcrypt.default.hash(parsed.data.password, 10)
+    }
 
     const { data, error } = await supabase
       .from('truck_companies')
