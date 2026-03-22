@@ -22,6 +22,7 @@ export default function TruckCompanyDetailPage({ params }: { params: { id: strin
     phone: '',
     is_active: true,
   })
+  const [password, setPassword] = useState('')
 
   useEffect(() => {
     if (isNew) return
@@ -53,6 +54,7 @@ export default function TruckCompanyDetailPage({ params }: { params: { id: strin
         phone: form.phone || null,
       }
       if (!isNew) body.is_active = form.is_active
+      if (password) body.password = password
 
       const res = await fetch(isNew ? '/api/truck-companies' : `/api/truck-companies/${id}`, {
         method: isNew ? 'POST' : 'PATCH',
@@ -113,6 +115,15 @@ export default function TruckCompanyDetailPage({ params }: { params: { id: strin
             type="tel"
             value={form.phone}
             onChange={e => setForm({ ...form, phone: e.target.value })}
+          />
+          <Input
+            label={isNew ? 'Login Password' : 'Set New Password'}
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder={isNew ? 'Required for truck company login' : 'Leave blank to keep current password'}
+            minLength={6}
+            required={isNew}
           />
           {!isNew && (
             <div className="flex items-center gap-2 pt-1">

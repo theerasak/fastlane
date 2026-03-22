@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { getServerClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import { handleApiError, ApiError } from '@/lib/api/errors'
@@ -10,6 +11,7 @@ const CreateSchema = z.object({
   contact_email: z.string().email().or(z.literal('')).optional().nullable(),
   contact_person: z.string().max(200).optional(),
   phone: z.string().max(50).optional(),
+  password: z.string().min(6).optional(),
 })
 
 const TC_FIELDS = 'id, name, contact_email, contact_person, phone, is_active, created_at'
@@ -46,14 +48,19 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) throw ApiError.badRequest(parsed.error.issues[0]?.message)
 
     const supabase = getServerClient()
+    const insertData: Record<string, unknown> = {
+      name: parsed.data.name,
+      contact_email: parsed.data.contact_email || null,
+      contact_person: parsed.data.contact_person || null,
+      phone: parsed.data.phone || null,
+    }
+    if (parsed.data.password) {
+      insertData.password_hash = await bcrypt.hash(parsed.data.password, 12)
+    }
+
     const { data, error } = await supabase
       .from('truck_companies')
-      .insert({
-        name: parsed.data.name,
-        contact_email: parsed.data.contact_email || null,
-        contact_person: parsed.data.contact_person || null,
-        phone: parsed.data.phone || null,
-      })
+      .insert(insertData)
       .select(TC_FIELDS)
       .single()
 
