@@ -10,9 +10,10 @@ const CreateUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum(['admin', 'agent', 'supervisor']),
-  company_name: z.string().max(200).optional(),
-  contact_person: z.string().max(200).optional(),
-  phone: z.string().max(50).optional(),
+  is_privileged: z.boolean().optional(),
+  company_name: z.string().max(200).optional().nullable(),
+  contact_person: z.string().max(200).optional().nullable(),
+  phone: z.string().max(50).optional().nullable(),
 })
 
 const USER_FIELDS = 'id, email, role, is_active, is_privileged, company_name, contact_person, phone, created_at'
@@ -44,9 +45,18 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const parsed = CreateUserSchema.safeParse(body)
-    if (!parsed.success) throw ApiError.badRequest(parsed.error.issues[0]?.message)
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      const fieldLabels: Record<string, string> = {
+        email: 'Email', password: 'Password', role: 'Role',
+        company_name: 'Company Name', contact_person: 'Contact Person', phone: 'Phone',
+      }
+      const field = issue?.path[0] ? fieldLabels[issue.path[0] as string] ?? String(issue.path[0]) : null
+      const message = field ? `${field}: ${issue?.message}` : (issue?.message ?? 'Invalid input')
+      throw ApiError.badRequest(message)
+    }
 
-    const { email, password, role, company_name, contact_person, phone } = parsed.data
+    const { email, password, role, is_privileged, company_name, contact_person, phone } = parsed.data
     const password_hash = await bcrypt.hash(password, 12)
 
     const supabase = getServerClient()
@@ -56,6 +66,7 @@ export async function POST(req: NextRequest) {
         email: email.toLowerCase(),
         password_hash,
         role,
+        is_privileged: role === 'agent' ? (is_privileged ?? false) : false,
         company_name: company_name || null,
         contact_person: contact_person || null,
         phone: phone || null,

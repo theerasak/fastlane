@@ -68,6 +68,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       }
       if (isNew) {
         body.password = form.password
+        if (form.role === 'agent') body.is_privileged = form.is_privileged
       } else {
         if (form.password) body.password = form.password
         body.is_active = form.is_active
@@ -161,8 +162,8 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
 
-          {!isNew && (
-            <div className="space-y-2 pt-1">
+          <div className="space-y-2 pt-1">
+            {!isNew && (
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -173,20 +174,20 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 />
                 <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
               </div>
-              {form.role === 'agent' && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="is_privileged"
-                    checked={form.is_privileged}
-                    onChange={(e) => setForm({ ...form, is_privileged: e.target.checked })}
-                    className="rounded"
-                  />
-                  <label htmlFor="is_privileged" className="text-sm text-gray-700">Privileged Agent</label>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+            {form.role === 'agent' && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_privileged"
+                  checked={form.is_privileged}
+                  onChange={(e) => setForm({ ...form, is_privileged: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="is_privileged" className="text-sm text-gray-700">Privileged Agent</label>
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" loading={saving} data-testid="save-user-btn">
