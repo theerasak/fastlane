@@ -49,8 +49,15 @@ test.describe('User Form — Privileged Agent toggle', () => {
     await loginAs(page, 'admin')
   })
 
-  test('Privileged Agent checkbox is hidden on new user form', async ({ page }) => {
+  test('Privileged Agent checkbox is visible on new user form when role is agent', async ({ page }) => {
     await page.goto('/users/new')
+    // Default role is agent — checkbox must be visible so admin can set privilege on create
+    await expect(page.getByLabel('Privileged Agent')).toBeVisible()
+  })
+
+  test('Privileged Agent checkbox is hidden on new user form when role is not agent', async ({ page }) => {
+    await page.goto('/users/new')
+    await page.getByTestId('role-select').selectOption('admin')
     await expect(page.getByLabel('Privileged Agent')).not.toBeVisible()
   })
 
