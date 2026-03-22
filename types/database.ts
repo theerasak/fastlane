@@ -47,7 +47,8 @@ export interface DbTerminalCapacity {
   terminal_id: string
   date: string
   hour_slot: number
-  capacity: number
+  capacity_privileged: number
+  capacity_non_privileged: number
   last_updated_at: string
   updated_by_api: boolean
 }
@@ -60,6 +61,7 @@ export interface DbBooking {
   num_trucks: number
   fastlane_token: string | null
   token_cancelled: boolean
+  is_privileged_booking: boolean
   status: BookingStatus
   created_at: string
   booked_at: string | null
@@ -90,10 +92,13 @@ export interface SlotRemainingCapacity {
   terminal_id: string
   date: string
   hour_slot: number
-  capacity: number
+  capacity_privileged: number
+  capacity_non_privileged: number
   last_updated_at: string
-  used_count: number
-  remaining_capacity: number
+  used_count_privileged: number
+  used_count_non_privileged: number
+  remaining_capacity_privileged: number
+  remaining_capacity_non_privileged: number
 }
 
 // Joined types

@@ -25,9 +25,11 @@ export function useCapacitySlots(terminalId: string, date: string) {
 
   useEffect(() => { fetchSlots() }, [fetchSlots])
 
-  function updateSlotOptimistic(hourSlot: number, capacity: number, lastUpdatedAt: string) {
+  function updateSlotOptimistic(hourSlot: number, capacityPrivileged: number, capacityNonPrivileged: number, lastUpdatedAt: string) {
     setSlots(prev => prev.map(s =>
-      s.hour_slot === hourSlot ? { ...s, capacity, last_updated_at: lastUpdatedAt } : s
+      s.hour_slot === hourSlot
+        ? { ...s, capacity_privileged: capacityPrivileged, capacity_non_privileged: capacityNonPrivileged, last_updated_at: lastUpdatedAt }
+        : s
     ))
   }
 

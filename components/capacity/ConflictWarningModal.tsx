@@ -7,8 +7,10 @@ import { HOUR_LABELS } from '@/lib/constants'
 interface ConflictWarningModalProps {
   open: boolean
   hourSlot: number
-  myValue: number
-  currentValue: number
+  myPrivileged: number
+  myNonPrivileged: number
+  currentPrivileged: number
+  currentNonPrivileged: number
   currentUpdatedAt: string
   onOverwrite: () => void
   onDiscard: () => void
@@ -17,8 +19,10 @@ interface ConflictWarningModalProps {
 export function ConflictWarningModal({
   open,
   hourSlot,
-  myValue,
-  currentValue,
+  myPrivileged,
+  myNonPrivileged,
+  currentPrivileged,
+  currentNonPrivileged,
   currentUpdatedAt,
   onOverwrite,
   onDiscard,
@@ -32,12 +36,14 @@ export function ConflictWarningModal({
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Your value</p>
-            <p className="text-2xl font-bold text-blue-700">{myValue}</p>
+            <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-2">Your values</p>
+            <p className="text-sm font-bold text-blue-700">Privileged: {myPrivileged}</p>
+            <p className="text-sm font-bold text-blue-700">Non-Privileged: {myNonPrivileged}</p>
           </div>
           <div className="bg-orange-50 rounded-lg p-3">
-            <p className="text-xs text-orange-600 font-medium uppercase tracking-wide mb-1">Current value</p>
-            <p className="text-2xl font-bold text-orange-700">{currentValue}</p>
+            <p className="text-xs text-orange-600 font-medium uppercase tracking-wide mb-2">Current values</p>
+            <p className="text-sm font-bold text-orange-700">Privileged: {currentPrivileged}</p>
+            <p className="text-sm font-bold text-orange-700">Non-Privileged: {currentNonPrivileged}</p>
             <p className="text-xs text-orange-500 mt-1">
               {new Date(currentUpdatedAt).toLocaleTimeString()}
             </p>
@@ -46,10 +52,10 @@ export function ConflictWarningModal({
 
         <div className="flex gap-2 pt-2">
           <Button onClick={onOverwrite} variant="primary" data-testid="conflict-overwrite-btn">
-            Overwrite with {myValue}
+            Overwrite with my values
           </Button>
           <Button onClick={onDiscard} variant="secondary" data-testid="conflict-discard-btn">
-            Keep {currentValue}
+            Keep current values
           </Button>
         </div>
       </div>

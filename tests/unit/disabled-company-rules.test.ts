@@ -128,6 +128,7 @@ describe('Rule 2 — Booking cannot be assigned to a disabled truck company', ()
 
   function setupCompanyMock(company: { is_active: boolean } | null) {
     const singleCompany = vi.fn().mockResolvedValue({ data: company, error: null })
+    const singleAgent = vi.fn().mockResolvedValue({ data: { is_privileged: false }, error: null })
     const singleBooking = vi.fn().mockResolvedValue({ data: MOCK_BOOKING, error: null })
 
     mockFrom.mockImplementation((table: string) => {
@@ -135,6 +136,13 @@ describe('Rule 2 — Booking cannot be assigned to a disabled truck company', ()
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({ single: singleCompany }),
+          }),
+        }
+      }
+      if (table === 'users') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ single: singleAgent }),
           }),
         }
       }

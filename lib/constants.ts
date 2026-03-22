@@ -6,7 +6,8 @@ export const HOUR_LABELS = HOUR_SLOTS.map((h) => {
   return `${from}–${to}`
 })
 
-export const DEFAULT_SLOT_CAPACITY = 2
+export const DEFAULT_SLOT_CAPACITY_PRIVILEGED = 1
+export const DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED = 1
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   'FILLING-IN': 'Filling In',

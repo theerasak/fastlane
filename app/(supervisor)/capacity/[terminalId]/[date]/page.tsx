@@ -31,8 +31,8 @@ export default function CapacityGridPage({
       ) : (
         <CapacityGrid
           slots={slots}
-          onSlotSaved={(hourSlot, capacity, lastUpdatedAt) => {
-            updateSlotOptimistic(hourSlot, capacity, lastUpdatedAt)
+          onSlotSaved={(hourSlot, capacityPrivileged, capacityNonPrivileged, lastUpdatedAt) => {
+            updateSlotOptimistic(hourSlot, capacityPrivileged, capacityNonPrivileged, lastUpdatedAt)
           }}
         />
       )}

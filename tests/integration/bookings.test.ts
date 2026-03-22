@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { GET as getBookings, POST as createBooking } from '@/app/api/bookings/route'
 import { GET as getBooking, PATCH as patchBooking } from '@/app/api/bookings/[id]/route'
 import { createAuthRequest, createRequest } from '../helpers/request'
-import { mockBooking, mockTerminal, mockCompany, mockInactiveCompany } from '../mocks/db'
+import { mockBooking, mockTerminal, mockCompany, mockInactiveCompany, mockPrivilegedAgent } from '../mocks/db'
 import { pgrstSingle } from '../mocks/handlers'
 
 const SUPA = 'https://mock-supabase.test/rest/v1'
@@ -155,6 +155,53 @@ describe('POST /api/bookings', () => {
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.error).toMatch(/disabled/i)
+  })
+})
+
+// ── POST /api/bookings — Privilege flag ───────────────────────────────────────
+
+describe('POST /api/bookings — is_privileged_booking flag', () => {
+  const newBooking = {
+    booking_number: 'BK-PRIV-001',
+    terminal_id: mockTerminal.id,
+    truck_company_id: mockCompany.id,
+    num_trucks: 1,
+  }
+
+  it('creates booking with is_privileged_booking=false for non-privileged agent', async () => {
+    // Default users handler returns mockAdmin (is_privileged=false)
+    const req = await createAuthRequest('http://localhost/api/bookings', {
+      role: 'agent',
+      method: 'POST',
+      body: newBooking,
+    })
+    const res = await createBooking(req)
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.is_privileged_booking).toBe(false)
+  })
+
+  it('creates booking with is_privileged_booking=true for privileged agent', async () => {
+    server.use(
+      http.get(`${SUPA}/users`, ({ request }) => {
+        const accept = request.headers.get('Accept') ?? ''
+        if (accept.includes('vnd.pgrst.object')) return HttpResponse.json(mockPrivilegedAgent)
+        return HttpResponse.json([mockPrivilegedAgent])
+      }),
+      http.post(`${SUPA}/bookings`, async () =>
+        HttpResponse.json({ ...mockBooking, is_privileged_booking: true }, { status: 201 })
+      )
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', {
+      role: 'agent',
+      userId: mockPrivilegedAgent.id,
+      method: 'POST',
+      body: newBooking,
+    })
+    const res = await createBooking(req)
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.is_privileged_booking).toBe(true)
   })
 })
 

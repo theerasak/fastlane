@@ -90,7 +90,7 @@ describe('POST /api/register/[token]/plates', () => {
   it('returns 409 SLOT_FULL when slot capacity is 0', async () => {
     server.use(
       http.get('https://mock-supabase.test/rest/v1/slot_remaining_capacity', () =>
-        pgrstSingle({ ...mockSlotCapacity[9], remaining_capacity: 0 })
+        pgrstSingle({ ...mockSlotCapacity[9], remaining_capacity_privileged: 0, remaining_capacity_non_privileged: 0 })
       )
     )
     const req = createRequest(`http://localhost/api/register/${TOKEN}/plates`, {

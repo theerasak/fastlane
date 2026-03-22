@@ -89,10 +89,19 @@ export async function POST(req: NextRequest) {
     if (!company || !company.is_active)
       throw ApiError.badRequest('Cannot assign booking to a disabled truck company')
 
+    // Determine privilege level from the creating agent
+    const { data: agent } = await supabase
+      .from('users')
+      .select('is_privileged')
+      .eq('id', session.id)
+      .single()
+
+    const isPrivilegedBooking = agent?.is_privileged ?? false
+
     const { data, error } = await supabase
       .from('bookings')
-      .insert(parsed.data)
-      .select('id, booking_number, terminal_id, truck_company_id, num_trucks, fastlane_token, token_cancelled, status, created_at, booked_at, closed_at')
+      .insert({ ...parsed.data, is_privileged_booking: isPrivilegedBooking })
+      .select('id, booking_number, terminal_id, truck_company_id, num_trucks, fastlane_token, token_cancelled, is_privileged_booking, status, created_at, booked_at, closed_at')
       .single()
 
     if (error) {

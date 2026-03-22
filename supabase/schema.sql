@@ -43,31 +43,33 @@ CREATE TABLE truck_companies (
 );
 
 -- 24 hourly slots per terminal per day
--- capacity defaults to 2 per slot
+-- capacity split into privileged and non-privileged pools (default 1 each)
 -- optimistic locking via last_updated_at
 CREATE TABLE terminal_capacity (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  terminal_id     UUID NOT NULL REFERENCES port_terminals(id) ON DELETE CASCADE,
-  date            DATE NOT NULL,
-  hour_slot       SMALLINT NOT NULL CHECK (hour_slot >= 0 AND hour_slot <= 23),
-  capacity        SMALLINT NOT NULL DEFAULT 2,
-  last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_by_api  BOOLEAN NOT NULL DEFAULT FALSE,
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  terminal_id             UUID NOT NULL REFERENCES port_terminals(id) ON DELETE CASCADE,
+  date                    DATE NOT NULL,
+  hour_slot               SMALLINT NOT NULL CHECK (hour_slot >= 0 AND hour_slot <= 23),
+  capacity_privileged     SMALLINT NOT NULL DEFAULT 1,
+  capacity_non_privileged SMALLINT NOT NULL DEFAULT 1,
+  last_updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by_api          BOOLEAN NOT NULL DEFAULT FALSE,
   UNIQUE (terminal_id, date, hour_slot)
 );
 
 CREATE TABLE bookings (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  booking_number   TEXT NOT NULL UNIQUE,
-  terminal_id      UUID NOT NULL REFERENCES port_terminals(id),
-  truck_company_id UUID NOT NULL REFERENCES truck_companies(id),
-  num_trucks       SMALLINT NOT NULL DEFAULT 1,
-  fastlane_token   TEXT UNIQUE,
-  token_cancelled  BOOLEAN NOT NULL DEFAULT FALSE,
-  status           booking_status NOT NULL DEFAULT 'FILLING-IN',
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  booked_at        TIMESTAMPTZ,
-  closed_at        TIMESTAMPTZ
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_number       TEXT NOT NULL UNIQUE,
+  terminal_id          UUID NOT NULL REFERENCES port_terminals(id),
+  truck_company_id     UUID NOT NULL REFERENCES truck_companies(id),
+  num_trucks           SMALLINT NOT NULL DEFAULT 1,
+  fastlane_token       TEXT UNIQUE,
+  token_cancelled      BOOLEAN NOT NULL DEFAULT FALSE,
+  is_privileged_booking BOOLEAN NOT NULL DEFAULT FALSE,
+  status               booking_status NOT NULL DEFAULT 'FILLING-IN',
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  booked_at            TIMESTAMPTZ,
+  closed_at            TIMESTAMPTZ
 );
 
 CREATE TABLE fastlane_registrations (
@@ -126,27 +128,28 @@ FROM bookings b
 LEFT JOIN fastlane_registrations fr ON fr.booking_id = b.id
 GROUP BY b.id, b.booking_number, b.num_trucks, b.status;
 
--- Remaining capacity per terminal/date/slot (capacity minus active registrations)
+-- Remaining capacity per terminal/date/slot, split by booking privilege level
 CREATE OR REPLACE VIEW slot_remaining_capacity AS
 SELECT
   tc.terminal_id,
   tc.date,
   tc.hour_slot,
-  tc.capacity,
+  tc.capacity_privileged,
+  tc.capacity_non_privileged,
   tc.last_updated_at,
-  COALESCE(COUNT(fr.id) FILTER (WHERE fr.is_deleted = FALSE), 0) AS used_count,
-  tc.capacity - COALESCE(COUNT(fr.id) FILTER (WHERE fr.is_deleted = FALSE), 0) AS remaining_capacity
+  COALESCE(SUM(CASE WHEN fr.is_deleted = FALSE AND b.is_privileged_booking = TRUE THEN 1 ELSE 0 END), 0)::SMALLINT AS used_count_privileged,
+  COALESCE(SUM(CASE WHEN fr.is_deleted = FALSE AND b.is_privileged_booking = FALSE THEN 1 ELSE 0 END), 0)::SMALLINT AS used_count_non_privileged,
+  (tc.capacity_privileged - COALESCE(SUM(CASE WHEN fr.is_deleted = FALSE AND b.is_privileged_booking = TRUE THEN 1 ELSE 0 END), 0))::SMALLINT AS remaining_capacity_privileged,
+  (tc.capacity_non_privileged - COALESCE(SUM(CASE WHEN fr.is_deleted = FALSE AND b.is_privileged_booking = FALSE THEN 1 ELSE 0 END), 0))::SMALLINT AS remaining_capacity_non_privileged
 FROM terminal_capacity tc
 LEFT JOIN fastlane_registrations fr
   ON fr.terminal_id = tc.terminal_id
   AND fr.hour_slot = tc.hour_slot
-  AND EXISTS (
-    SELECT 1 FROM bookings b
-    WHERE b.id = fr.booking_id
-      AND b.terminal_id = tc.terminal_id
-      AND DATE(b.created_at) = tc.date
-  )
-GROUP BY tc.terminal_id, tc.date, tc.hour_slot, tc.capacity, tc.last_updated_at;
+LEFT JOIN bookings b
+  ON b.id = fr.booking_id
+  AND b.terminal_id = tc.terminal_id
+  AND DATE(b.created_at AT TIME ZONE 'UTC') = tc.date
+GROUP BY tc.terminal_id, tc.date, tc.hour_slot, tc.capacity_privileged, tc.capacity_non_privileged, tc.last_updated_at;
 
 -- ============================================================
 -- Functions

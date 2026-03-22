@@ -101,6 +101,7 @@ export const mockBooking = {
   num_trucks: 2,
   fastlane_token: 'TESTTOKEN001',
   token_cancelled: false,
+  is_privileged_booking: false,
   status: 'FILLING-IN' as const,
   created_at: `${BOOKING_DATE}T08:00:00Z`,
   booked_at: null,
@@ -113,7 +114,8 @@ export const mockSlots = Array.from({ length: 24 }, (_, i) => ({
   terminal_id: mockTerminal.id,
   date: BOOKING_DATE,
   hour_slot: i,
-  capacity: 5,
+  capacity_privileged: 3,
+  capacity_non_privileged: 2,
   last_updated_at: '2026-03-11T07:00:00Z',
   updated_by_api: false,
 }))
@@ -123,10 +125,13 @@ export const mockSlotCapacity = mockSlots.map(s => ({
   terminal_id: s.terminal_id,
   date: s.date,
   hour_slot: s.hour_slot,
-  capacity: s.capacity,
+  capacity_privileged: s.capacity_privileged,
+  capacity_non_privileged: s.capacity_non_privileged,
   last_updated_at: s.last_updated_at,
-  used_count: 0,
-  remaining_capacity: 5,
+  used_count_privileged: 0,
+  used_count_non_privileged: 0,
+  remaining_capacity_privileged: s.capacity_privileged,
+  remaining_capacity_non_privileged: s.capacity_non_privileged,
 }))
 
 export const mockRegistration = {

@@ -114,6 +114,7 @@ export interface BookingResponse {
   num_trucks: number
   fastlane_token: string | null
   token_cancelled: boolean
+  is_privileged_booking?: boolean
   status: BookingStatus
   created_at: string
   booked_at: string | null
@@ -136,22 +137,27 @@ export interface CapacitySlotResponse {
   terminal_id: string
   date: string
   hour_slot: number
-  capacity: number
+  capacity_privileged: number
+  capacity_non_privileged: number
   last_updated_at: string
-  used_count?: number
-  remaining_capacity?: number
+  used_count_privileged?: number
+  used_count_non_privileged?: number
+  remaining_capacity_privileged?: number
+  remaining_capacity_non_privileged?: number
 }
 
 export interface UpdateCapacityRequest {
   hour_slot: number
-  capacity: number
+  capacity_privileged: number
+  capacity_non_privileged: number
   last_updated_at: string
   force?: boolean
 }
 
 export interface CapacityConflictResponse {
   code: 'CONFLICT'
-  current_value: number
+  current_capacity_privileged: number
+  current_capacity_non_privileged: number
   current_updated_at: string
 }
 

@@ -103,7 +103,7 @@ export const handlers = [
   ),
 
   http.patch(`${SUPA}/terminal_capacity`, async () =>
-    pgrstSingle({ ...mockSlots[9], capacity: 3 })
+    pgrstSingle({ ...mockSlots[9], capacity_privileged: 3, capacity_non_privileged: 2 })
   ),
 
   // ── slot_remaining_capacity (view) ────────────────────────────────────
