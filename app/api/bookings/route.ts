@@ -78,6 +78,17 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) throw ApiError.badRequest(parsed.error.issues[0]?.message)
 
     const supabase = getServerClient()
+
+    // Reject booking if the selected truck company is disabled
+    const { data: company } = await supabase
+      .from('truck_companies')
+      .select('is_active')
+      .eq('id', parsed.data.truck_company_id)
+      .single()
+
+    if (!company || !company.is_active)
+      throw ApiError.badRequest('Cannot assign booking to a disabled truck company')
+
     const { data, error } = await supabase
       .from('bookings')
       .insert(parsed.data)

@@ -45,6 +45,42 @@ describe('GET /api/truck-companies', () => {
     expect(res.status).toBe(403)
   })
 
+  it('returns only active companies for agent (filters by is_active=true)', async () => {
+    server.use(
+      http.get(`${SUPA}/truck_companies`, ({ request }) => {
+        const url = new URL(request.url)
+        // Supabase sends is_active=eq.true when .eq('is_active', true) is applied
+        if (url.searchParams.get('is_active') === 'eq.true')
+          return HttpResponse.json([mockCompany])
+        return HttpResponse.json([mockCompany, mockInactiveCompany])
+      })
+    )
+    const req = await createAuthRequest('http://localhost/api/truck-companies', { role: 'agent' })
+    const res = await getCompanies(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toHaveLength(1)
+    expect(body.data[0].is_active).toBe(true)
+  })
+
+  it('returns both active and inactive companies for admin (no is_active filter)', async () => {
+    server.use(
+      http.get(`${SUPA}/truck_companies`, ({ request }) => {
+        const url = new URL(request.url)
+        if (url.searchParams.get('is_active') === 'eq.true')
+          return HttpResponse.json([mockCompany])
+        return HttpResponse.json([mockCompany, mockInactiveCompany])
+      })
+    )
+    const req = await createAuthRequest('http://localhost/api/truck-companies', { role: 'admin' })
+    const res = await getCompanies(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const statuses = body.data.map((c: { is_active: boolean }) => c.is_active)
+    expect(statuses).toContain(true)
+    expect(statuses).toContain(false)
+  })
+
   it('returns 403 for unauthenticated request', async () => {
     const req = createRequest('http://localhost/api/truck-companies')
     const res = await getCompanies(req)

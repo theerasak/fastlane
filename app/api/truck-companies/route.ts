@@ -20,10 +20,12 @@ export async function GET(req: NextRequest) {
     if (!session || (session.role !== 'admin' && session.role !== 'agent')) throw ApiError.forbidden()
 
     const supabase = getServerClient()
-    const { data, error } = await supabase
-      .from('truck_companies')
-      .select(TC_FIELDS)
-      .order('name')
+    let query = supabase.from('truck_companies').select(TC_FIELDS).order('name')
+
+    // Agents only see active companies (for booking assignment)
+    if (session.role === 'agent') query = query.eq('is_active', true)
+
+    const { data, error } = await query
 
     if (error) throw ApiError.internal(error.message)
 

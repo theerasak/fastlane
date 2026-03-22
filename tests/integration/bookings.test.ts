@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vitest'
+import { server } from '../mocks/server'
+import { http, HttpResponse } from 'msw'
 import { GET as getBookings, POST as createBooking } from '@/app/api/bookings/route'
 import { GET as getBooking, PATCH as patchBooking } from '@/app/api/bookings/[id]/route'
 import { createAuthRequest, createRequest } from '../helpers/request'
-import { mockBooking, mockTerminal, mockCompany } from '../mocks/db'
+import { mockBooking, mockTerminal, mockCompany, mockInactiveCompany } from '../mocks/db'
+import { pgrstSingle } from '../mocks/handlers'
+
+const SUPA = 'https://mock-supabase.test/rest/v1'
 
 // ── GET /api/bookings ─────────────────────────────────────────────────────────
 
@@ -85,6 +90,71 @@ describe('POST /api/bookings', () => {
     })
     const res = await createBooking(req)
     expect(res.status).toBe(400)
+  })
+
+  it('returns 400 when assigning to a disabled truck company', async () => {
+    server.use(
+      http.get(`${SUPA}/truck_companies`, () => pgrstSingle(mockInactiveCompany))
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', {
+      role: 'agent',
+      method: 'POST',
+      body: {
+        booking_number: 'BK-DISABLED-001',
+        terminal_id: mockTerminal.id,
+        truck_company_id: mockInactiveCompany.id,
+        num_trucks: 1,
+      },
+    })
+    const res = await createBooking(req)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/disabled/i)
+  })
+
+  it('returns 400 when assigning to a disabled truck company as admin', async () => {
+    server.use(
+      http.get(`${SUPA}/truck_companies`, () => pgrstSingle(mockInactiveCompany))
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', {
+      role: 'admin',
+      method: 'POST',
+      body: {
+        booking_number: 'BK-DISABLED-002',
+        terminal_id: mockTerminal.id,
+        truck_company_id: mockInactiveCompany.id,
+        num_trucks: 1,
+      },
+    })
+    const res = await createBooking(req)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/disabled/i)
+  })
+
+  it('returns 400 when truck company does not exist', async () => {
+    server.use(
+      http.get(`${SUPA}/truck_companies`, () =>
+        HttpResponse.json(
+          { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' },
+          { status: 406 }
+        )
+      )
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', {
+      role: 'agent',
+      method: 'POST',
+      body: {
+        booking_number: 'BK-NOTFOUND-001',
+        terminal_id: mockTerminal.id,
+        truck_company_id: '00000000-0000-0000-0000-999999999999',
+        num_trucks: 1,
+      },
+    })
+    const res = await createBooking(req)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/disabled/i)
   })
 })
 

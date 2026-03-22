@@ -15,7 +15,8 @@ const SUPA = 'https://mock-supabase.test/rest/v1'
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /** Returns a single-object response (for .single() calls). */
-export function pgrstSingle(data: unknown) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function pgrstSingle(data: any) {
   return HttpResponse.json(data)
 }
 
