@@ -34,6 +34,7 @@ function LoginForm() {
       }
 
       const role = data.user?.role
+      router.refresh()
       if (redirect) {
         router.push(redirect)
       } else if (role === 'admin') {

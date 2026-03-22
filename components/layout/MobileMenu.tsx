@@ -21,6 +21,7 @@ export function MobileMenu({ items, title = 'Menu' }: MobileMenuProps) {
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
+    router.refresh()
     router.push('/login')
   }
 
