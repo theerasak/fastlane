@@ -34,18 +34,8 @@ function LoginForm() {
       }
 
       const role = data.user?.role
-      router.refresh()
-      if (redirect) {
-        router.push(redirect)
-      } else if (role === 'admin') {
-        router.push('/users')
-      } else if (role === 'agent') {
-        router.push('/bookings')
-      } else if (role === 'supervisor') {
-        router.push('/capacity')
-      } else {
-        router.push('/')
-      }
+      const dest = redirect || (role === 'admin' ? '/users' : role === 'agent' ? '/bookings' : role === 'supervisor' ? '/capacity' : '/')
+      window.location.href = dest
     } catch {
       setError('Network error. Please try again.')
     } finally {

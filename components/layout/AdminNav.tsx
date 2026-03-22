@@ -66,8 +66,7 @@ export function AdminNav({ role, companyName }: { role: string; companyName?: st
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
-    router.refresh()
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   return (
