@@ -117,13 +117,17 @@ export interface BookingResponse {
   num_trucks: number
   fastlane_token: string | null
   token_cancelled: boolean
-  is_privileged_booking?: boolean
+  is_privileged_booking: boolean
   status: BookingStatus
+  booking_date?: string
   created_at: string
   booked_at: string | null
   closed_at: string | null
+  created_by: string | null
   terminal_name?: string
   truck_company_name?: string
+  agent_email?: string | null
+  agent_company_name?: string | null
   active_count?: number
 }
 
