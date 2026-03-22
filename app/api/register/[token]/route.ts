@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { handleApiError, ApiError } from '@/lib/api/errors'
 import { getTcSession } from '@/lib/auth/tc-session'
+import { DEFAULT_SLOT_CAPACITY_PRIVILEGED, DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED } from '@/lib/constants'
+
+/** Inserts 24 default capacity rows for a terminal/date if none exist. */
+async function ensureCapacityExists(terminalId: string, date: string) {
+  const supabase = getServerClient()
+  const { data: existing } = await supabase
+    .from('terminal_capacity')
+    .select('id')
+    .eq('terminal_id', terminalId)
+    .eq('date', date)
+    .limit(1)
+
+  if (existing && existing.length > 0) return // already has capacity
+
+  const rows = Array.from({ length: 24 }, (_, i) => ({
+    terminal_id: terminalId,
+    date,
+    hour_slot: i,
+    capacity_privileged: DEFAULT_SLOT_CAPACITY_PRIVILEGED,
+    capacity_non_privileged: DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED,
+  }))
+  await supabase.from('terminal_capacity').insert(rows)
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -26,6 +49,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     if (booking.truck_company_id !== tcSession.truck_company_id) throw ApiError.forbidden()
 
     const bookingDate = (booking as unknown as { booking_date: string }).booking_date
+
+    // Auto-create default capacity if supervisor hasn't configured this date yet
+    await ensureCapacityExists(booking.terminal_id, bookingDate)
 
     // Get active registrations and slot availability in parallel
     const [{ data: registrations }, { data: slots }] = await Promise.all([
@@ -84,7 +110,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
 
     const { data: booking } = await supabase
       .from('bookings')
-      .select('id, truck_company_id, status, token_cancelled')
+      .select('id, terminal_id, truck_company_id, status, token_cancelled')
       .eq('fastlane_token', token)
       .single()
 
@@ -110,6 +136,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       .single()
 
     if (error || !data) throw ApiError.internal('Failed to update booking date')
+
+    // Auto-create default capacity for the new date if supervisor hasn't set it up yet
+    await ensureCapacityExists(booking.terminal_id, booking_date)
 
     return NextResponse.json({ data })
   } catch (err) {

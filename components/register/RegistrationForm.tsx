@@ -60,6 +60,10 @@ export function RegistrationForm({ token, initialData }: RegistrationFormProps) 
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Failed to add plate')
     setRegistrations(prev => [...prev, json.data])
+    // Decrement remaining capacity for the slot that was just filled
+    setSlotAvailability(prev => prev.map(s =>
+      s.hour_slot === hourSlot ? { ...s, remaining_capacity: s.remaining_capacity - 1 } : s
+    ))
     showToast('Plate added', 'success')
   }
 
@@ -96,7 +100,7 @@ export function RegistrationForm({ token, initialData }: RegistrationFormProps) 
       <div className="card">
         <div className="flex items-center gap-3">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Booking Date</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Appointment Date</p>
             <input
               type="date"
               value={bookingDate}

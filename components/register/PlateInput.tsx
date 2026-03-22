@@ -16,9 +16,11 @@ interface PlateInputProps {
 function formatPlateInput(raw: string): string {
   const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
   if (clean.length <= 2) return clean
-  // Insert dash after 2nd or 3rd alphanumeric char
-  const prefix = clean.slice(0, Math.min(clean.length, 3))
-  const digits = clean.slice(prefix.length)
+  // Use minimum prefix length to leave exactly 4 suffix chars when possible
+  // e.g. 100011 → prefixLen=2 → 10-0011 (not 100-011)
+  const prefixLen = clean.length >= 6 ? Math.min(clean.length - 4, 3) : Math.min(clean.length, 3)
+  const prefix = clean.slice(0, prefixLen)
+  const digits = clean.slice(prefixLen)
   if (digits.length === 0) return prefix
   return `${prefix}-${digits.slice(0, 4)}`
 }

@@ -4,7 +4,27 @@ import { getTcSessionFromCookies } from '@/lib/auth/tc-session'
 import { RegistrationForm } from '@/components/register/RegistrationForm'
 import { ToastContainer } from '@/components/ui/Toast'
 import { StatusBadge } from '@/components/ui/Badge'
+import { DEFAULT_SLOT_CAPACITY_PRIVILEGED, DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED } from '@/lib/constants'
 import type { BookingPublicInfo } from '@/types/api'
+
+async function ensureCapacityExists(terminalId: string, date: string) {
+  const supabase = getServerClient()
+  const { data: existing } = await supabase
+    .from('terminal_capacity')
+    .select('id')
+    .eq('terminal_id', terminalId)
+    .eq('date', date)
+    .limit(1)
+  if (existing && existing.length > 0) return
+  const rows = Array.from({ length: 24 }, (_, i) => ({
+    terminal_id: terminalId,
+    date,
+    hour_slot: i,
+    capacity_privileged: DEFAULT_SLOT_CAPACITY_PRIVILEGED,
+    capacity_non_privileged: DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED,
+  }))
+  await supabase.from('terminal_capacity').insert(rows)
+}
 
 interface Props {
   params: Promise<{ token: string }>
