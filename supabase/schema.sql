@@ -20,6 +20,7 @@ CREATE TABLE users (
   role           user_role NOT NULL DEFAULT 'agent',
   is_active      BOOLEAN NOT NULL DEFAULT TRUE,
   is_privileged  BOOLEAN NOT NULL DEFAULT FALSE,
+  company_name   TEXT,
   contact_person TEXT,
   phone          TEXT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()

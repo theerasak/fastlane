@@ -10,11 +10,12 @@ const CreateUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum(['admin', 'agent', 'supervisor']),
+  company_name: z.string().max(200).optional(),
   contact_person: z.string().max(200).optional(),
   phone: z.string().max(50).optional(),
 })
 
-const USER_FIELDS = 'id, email, role, is_active, is_privileged, contact_person, phone, created_at'
+const USER_FIELDS = 'id, email, role, is_active, is_privileged, company_name, contact_person, phone, created_at'
 
 export async function GET(req: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     const parsed = CreateUserSchema.safeParse(body)
     if (!parsed.success) throw ApiError.badRequest(parsed.error.issues[0]?.message)
 
-    const { email, password, role, contact_person, phone } = parsed.data
+    const { email, password, role, company_name, contact_person, phone } = parsed.data
     const password_hash = await bcrypt.hash(password, 12)
 
     const supabase = getServerClient()
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
         email: email.toLowerCase(),
         password_hash,
         role,
+        company_name: company_name || null,
         contact_person: contact_person || null,
         phone: phone || null,
       })

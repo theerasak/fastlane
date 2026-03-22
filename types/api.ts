@@ -26,6 +26,7 @@ export interface CreateUserRequest {
   email: string
   password: string
   role: UserRole
+  company_name?: string
   contact_person?: string
   phone?: string
 }
@@ -36,8 +37,9 @@ export interface UpdateUserRequest {
   role?: UserRole
   is_active?: boolean
   is_privileged?: boolean
-  contact_person?: string
-  phone?: string
+  company_name?: string | null
+  contact_person?: string | null
+  phone?: string | null
 }
 
 export interface UserResponse {
@@ -46,6 +48,7 @@ export interface UserResponse {
   role: UserRole
   is_active: boolean
   is_privileged: boolean
+  company_name: string | null
   contact_person: string | null
   phone: string | null
   created_at: string

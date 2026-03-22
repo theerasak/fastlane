@@ -12,11 +12,12 @@ const UpdateUserSchema = z.object({
   role: z.enum(['admin', 'agent', 'supervisor']).optional(),
   is_active: z.boolean().optional(),
   is_privileged: z.boolean().optional(),
+  company_name: z.string().max(200).optional().nullable(),
   contact_person: z.string().max(200).optional().nullable(),
   phone: z.string().max(50).optional().nullable(),
 })
 
-const USER_FIELDS = 'id, email, role, is_active, is_privileged, contact_person, phone, created_at'
+const USER_FIELDS = 'id, email, role, is_active, is_privileged, company_name, contact_person, phone, created_at'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -64,6 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (parsed.data.role) updates.role = parsed.data.role
     if (parsed.data.is_active !== undefined) updates.is_active = parsed.data.is_active
     if (parsed.data.is_privileged !== undefined) updates.is_privileged = parsed.data.is_privileged
+    if (parsed.data.company_name !== undefined) updates.company_name = parsed.data.company_name
     if (parsed.data.contact_person !== undefined) updates.contact_person = parsed.data.contact_person
     if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone
     if (parsed.data.password) updates.password_hash = await bcrypt.hash(parsed.data.password, 12)

@@ -28,6 +28,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     role: 'agent' as string,
     is_active: true,
     is_privileged: false,
+    company_name: '',
     contact_person: '',
     phone: '',
   })
@@ -45,6 +46,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
             role: d.role,
             is_active: d.is_active,
             is_privileged: d.is_privileged,
+            company_name: d.company_name ?? '',
             contact_person: d.contact_person ?? '',
             phone: d.phone ?? '',
           })
@@ -60,6 +62,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       const body: Record<string, unknown> = {
         email: form.email,
         role: form.role,
+        company_name: form.company_name || null,
         contact_person: form.contact_person || null,
         phone: form.phone || null,
       }
@@ -139,6 +142,12 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
             onChange={(e) => setForm({ ...form, role: e.target.value, is_privileged: false })}
             options={ROLE_OPTIONS}
             data-testid="role-select"
+          />
+          <Input
+            label="Company Name"
+            value={form.company_name}
+            onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+            data-testid="company-name-input"
           />
           <Input
             label="Contact Person"

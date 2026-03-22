@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifyJwt } from '@/lib/auth/jwt'
+import { getServerClient } from '@/lib/supabase/server'
 import { COOKIE_NAME } from '@/lib/constants'
 import { AdminNav } from '@/components/layout/AdminNav'
 import { MobileMenu } from '@/components/layout/MobileMenu'
@@ -32,17 +33,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!isAdmin && !isAgent) redirect('/login')
 
+  let companyName: string | undefined
+  if (isAgent) {
+    const supabase = getServerClient()
+    const { data } = await supabase
+      .from('users')
+      .select('company_name')
+      .eq('id', payload.sub)
+      .single()
+    companyName = (data as { company_name: string | null } | null)?.company_name ?? undefined
+  }
+
   const mobileItems = isAdmin ? adminMobileItems : agentMobileItems
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile top nav */}
-      <MobileMenu items={mobileItems} title="FMS" />
+      <MobileMenu items={mobileItems} title={companyName ?? 'FMS'} />
 
       <div className="flex">
         {/* Sidebar — hidden on mobile, visible tablet+ */}
         <aside className="hidden tablet:flex tablet:flex-col tablet:w-56 tablet:min-h-screen bg-white border-r border-gray-200 fixed top-0 left-0 z-30">
-          <AdminNav role={payload.role} />
+          <AdminNav role={payload.role} companyName={companyName} />
         </aside>
 
         {/* Main content */}

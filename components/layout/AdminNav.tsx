@@ -57,7 +57,7 @@ const adminNavItems: NavItem[] = [
   },
 ]
 
-export function AdminNav({ role }: { role: string }) {
+export function AdminNav({ role, companyName }: { role: string; companyName?: string }) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -74,6 +74,9 @@ export function AdminNav({ role }: { role: string }) {
       <div className="p-4 border-b border-gray-200">
         <h1 className="text-lg font-bold text-gray-900">FMS</h1>
         <p className="text-xs text-gray-500 mt-0.5">Fastlane Management</p>
+        {companyName && (
+          <p className="text-xs font-medium text-blue-700 mt-1 truncate" title={companyName}>{companyName}</p>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
