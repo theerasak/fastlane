@@ -1,4 +1,5 @@
 import { test as base, Page } from '@playwright/test'
+import { TC_TEST_EMAIL, TC_TEST_PASSWORD, TC_TEST_TOKEN } from './db.fixture'
 
 export type Role = 'admin' | 'agent' | 'supervisor'
 
@@ -30,6 +31,29 @@ export async function loginAs(page: Page, role: Role) {
 export async function logout(page: Page) {
   await page.getByTestId('logout-button').click()
   await page.waitForURL('/login')
+}
+
+/**
+ * Logs in as a truck company by calling the API directly (reliable cookie setup).
+ * After this, the page will be at /register/TC_TEST_TOKEN with a valid TC session.
+ */
+export async function loginAsTc(
+  page: Page,
+  email = TC_TEST_EMAIL,
+  password = TC_TEST_PASSWORD
+) {
+  // POST to the login API — Playwright stores the Set-Cookie in the browser context
+  const res = await page.request.post('/api/register/auth/login', {
+    data: { contact_email: email, password },
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!res.ok()) {
+    const body = await res.json()
+    throw new Error(`TC login failed (${res.status()}): ${body.error}`)
+  }
+  // Now navigate to the token page with the session cookie set
+  await page.goto(`/register/${TC_TEST_TOKEN}`)
+  await page.waitForLoadState('networkidle')
 }
 
 type Fixtures = {

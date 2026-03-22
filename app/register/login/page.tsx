@@ -45,6 +45,7 @@ function LoginForm() {
         placeholder="company@email.com"
         required
         autoFocus
+        data-testid="tc-email-input"
       />
       <Input
         label="Password"
@@ -53,11 +54,12 @@ function LoginForm() {
         onChange={e => setPassword(e.target.value)}
         placeholder="••••••••"
         required
+        data-testid="tc-password-input"
       />
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+        <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg" data-testid="tc-login-error">{error}</p>
       )}
-      <Button type="submit" loading={loading} className="w-full">
+      <Button type="submit" loading={loading} className="w-full" data-testid="tc-login-submit">
         Sign In
       </Button>
     </form>
