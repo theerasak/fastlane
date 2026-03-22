@@ -25,21 +25,32 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .select(`
         id, booking_number, terminal_id, truck_company_id, num_trucks,
         fastlane_token, token_cancelled, status, created_at, booked_at, closed_at,
-        is_privileged_booking, created_by, booking_date,
+        is_privileged_booking, booking_date,
         port_terminals(name),
-        truck_companies(name),
-        users!created_by(id, email, company_name)
+        truck_companies(name)
       `)
       .eq('id', id)
       .single()
 
     if (error || !data) throw ApiError.notFound('Booking not found')
 
-    const { data: fillData } = await supabase
-      .from('booking_fill_stats')
-      .select('active_count')
-      .eq('booking_id', id)
-      .single()
+    // Get fill stats and creator info in parallel
+    const [{ data: fillData }, { data: auditEntry }] = await Promise.all([
+      supabase.from('booking_fill_stats').select('active_count').eq('booking_id', id).single(),
+      supabase.from('audit_log').select('performed_by, performed_by_email').eq('table_name', 'bookings').eq('record_id', id).eq('action', 'CREATE').maybeSingle(),
+    ])
+
+    // Look up agent details from creator
+    let agentEmail: string | null = auditEntry?.performed_by_email ?? null
+    let agentCompanyName: string | null = null
+    let createdBy: string | null = auditEntry?.performed_by ?? null
+    if (auditEntry?.performed_by) {
+      const { data: agentUser } = await supabase.from('users').select('id, email, company_name').eq('id', auditEntry.performed_by).single()
+      if (agentUser) {
+        agentEmail = agentUser.email
+        agentCompanyName = agentUser.company_name ?? null
+      }
+    }
 
     return NextResponse.json({
       data: {
@@ -47,14 +58,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         terminal_name: (data.port_terminals as unknown as { name: string } | null)?.name,
         truck_company_name: (data.truck_companies as unknown as { name: string } | null)?.name,
         active_count: fillData?.active_count ?? 0,
-        agent_email: (data.users as unknown as { email: string } | null)?.email ?? null,
-        agent_company_name: (data.users as unknown as { company_name: string | null } | null)?.company_name ?? null,
-        created_by: data.created_by,
+        agent_email: agentEmail,
+        agent_company_name: agentCompanyName,
+        created_by: createdBy,
         is_privileged_booking: (data as unknown as { is_privileged_booking: boolean }).is_privileged_booking,
         booking_date: (data as unknown as { booking_date: string }).booking_date,
         port_terminals: undefined,
         truck_companies: undefined,
-        users: undefined,
       }
     })
   } catch (err) {
@@ -82,18 +92,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    const updates: Record<string, unknown> = { ...parsed.data }
-    if (parsed.data.status === 'BOOKED') updates.booked_at = new Date().toISOString()
-    if (parsed.data.status === 'CLOSED') updates.closed_at = new Date().toISOString()
+    const newCreatedBy = parsed.data.created_by
+    const updates: Record<string, unknown> = {}
+    if (parsed.data.status !== undefined) updates.status = parsed.data.status
+    if (parsed.data.num_trucks !== undefined) updates.num_trucks = parsed.data.num_trucks
     if (parsed.data.truck_company_id !== undefined) updates.truck_company_id = parsed.data.truck_company_id
     if (parsed.data.is_privileged_booking !== undefined) updates.is_privileged_booking = parsed.data.is_privileged_booking
-    if (parsed.data.created_by !== undefined) updates.created_by = parsed.data.created_by
+    if (parsed.data.status === 'BOOKED') updates.booked_at = new Date().toISOString()
+    if (parsed.data.status === 'CLOSED') updates.closed_at = new Date().toISOString()
+    // created_by is handled via RPC (not direct PostgREST update)
 
     const supabase = getServerClient()
 
     const { data: before } = await supabase
       .from('bookings')
-      .select('id, booking_number, status, num_trucks, is_privileged_booking, created_by, booking_date, created_at, booked_at, closed_at')
+      .select('id, booking_number, status, num_trucks, is_privileged_booking, booking_date, created_at, booked_at, closed_at')
       .eq('id', id)
       .single()
 
@@ -101,10 +114,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .from('bookings')
       .update(updates)
       .eq('id', id)
-      .select('id, booking_number, terminal_id, truck_company_id, num_trucks, fastlane_token, token_cancelled, status, is_privileged_booking, created_by, booking_date, created_at, booked_at, closed_at')
+      .select('id, booking_number, terminal_id, truck_company_id, num_trucks, fastlane_token, token_cancelled, status, is_privileged_booking, booking_date, created_at, booked_at, closed_at')
       .single()
 
     if (error || !data) throw ApiError.notFound('Booking not found')
+
+    // Update created_by via RPC if changed
+    if (newCreatedBy !== undefined) {
+      await supabase.rpc('set_booking_created_by', { p_id: id, p_user_id: newCreatedBy })
+    }
 
     await writeAuditLog({
       table_name: 'bookings',

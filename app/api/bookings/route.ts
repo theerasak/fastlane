@@ -31,9 +31,12 @@ export async function GET(req: NextRequest) {
       `)
       .order('created_at', { ascending: false })
 
-    // Agents only see bookings they created
+    // Agents only see bookings they created (use RPC to avoid schema cache issue)
     if (session.role === 'agent') {
-      query = query.eq('created_by', session.id)
+      const { data: agentIds } = await supabase.rpc('get_agent_booking_ids', { p_user_id: session.id })
+      const ids = (agentIds as string[] | null) ?? []
+      if (ids.length === 0) return NextResponse.json({ data: [] })
+      query = query.in('id', ids)
     }
 
     if (bookingNumber) {
@@ -105,7 +108,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('bookings')
-      .insert({ ...parsed.data, is_privileged_booking: isPrivilegedBooking, created_by: session.id })
+      .insert({ ...parsed.data, is_privileged_booking: isPrivilegedBooking })
       .select('id, booking_number, terminal_id, truck_company_id, num_trucks, fastlane_token, token_cancelled, is_privileged_booking, status, created_at, booked_at, closed_at')
       .single()
 
@@ -113,6 +116,9 @@ export async function POST(req: NextRequest) {
       if (error.code === '23505') throw ApiError.conflict('Booking number already exists')
       throw ApiError.internal(error.message)
     }
+
+    // Set created_by via RPC (bypasses PostgREST schema cache)
+    await supabase.rpc('set_booking_created_by', { p_id: data.id, p_user_id: session.id })
 
     await writeAuditLog({
       table_name: 'bookings',
