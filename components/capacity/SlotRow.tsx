@@ -121,18 +121,27 @@ export function SlotRow({ slot, onSaved }: SlotRowProps) {
               onChange={e => setValuePriv(Number(e.target.value))}
               onBlur={handleBlurPriv}
               onKeyDown={handleKeyDownPriv}
-              className="w-16 text-center border-b-2 border-blue-500 bg-transparent focus:outline-none font-bold"
+              className="w-20 text-center rounded border-2 border-blue-500 bg-blue-50 px-2 py-1 font-bold focus:outline-none"
               autoFocus
               disabled={saving}
               data-testid={`slot-priv-input-${slot.hour_slot}`}
             />
           ) : (
             <button
-              className={`font-bold hover:text-blue-600 transition-colors ${remainPriv === 0 ? 'text-red-600' : 'text-gray-800'}`}
+              className={[
+                'inline-flex items-center gap-1 w-20 justify-center rounded border px-2 py-1 font-bold cursor-text transition-colors',
+                remainPriv === 0
+                  ? 'border-red-300 bg-red-50 text-red-600 hover:border-red-400 hover:bg-red-100'
+                  : 'border-blue-200 bg-blue-50 text-blue-800 hover:border-blue-400 hover:bg-blue-100',
+              ].join(' ')}
               onClick={() => { setValuePriv(slot.capacity_privileged); setEditingPriv(true) }}
+              title="Click to edit"
               data-testid={`slot-priv-cell-${slot.hour_slot}`}
             >
               {slot.capacity_privileged}
+              <svg className="w-3 h-3 opacity-40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a4 4 0 01-1.414.586l-3 .586.586-3a4 4 0 01.586-1.414z" />
+              </svg>
             </button>
           )}
         </td>
@@ -152,18 +161,27 @@ export function SlotRow({ slot, onSaved }: SlotRowProps) {
               onChange={e => setValueNonPriv(Number(e.target.value))}
               onBlur={handleBlurNonPriv}
               onKeyDown={handleKeyDownNonPriv}
-              className="w-16 text-center border-b-2 border-green-500 bg-transparent focus:outline-none font-bold"
+              className="w-20 text-center rounded border-2 border-green-500 bg-green-50 px-2 py-1 font-bold focus:outline-none"
               autoFocus
               disabled={saving}
               data-testid={`slot-nonpriv-input-${slot.hour_slot}`}
             />
           ) : (
             <button
-              className={`font-bold hover:text-green-600 transition-colors ${remainNonPriv === 0 ? 'text-red-600' : 'text-gray-800'}`}
+              className={[
+                'inline-flex items-center gap-1 w-20 justify-center rounded border px-2 py-1 font-bold cursor-text transition-colors',
+                remainNonPriv === 0
+                  ? 'border-red-300 bg-red-50 text-red-600 hover:border-red-400 hover:bg-red-100'
+                  : 'border-green-200 bg-green-50 text-green-800 hover:border-green-400 hover:bg-green-100',
+              ].join(' ')}
               onClick={() => { setValueNonPriv(slot.capacity_non_privileged); setEditingNonPriv(true) }}
+              title="Click to edit"
               data-testid={`slot-nonpriv-cell-${slot.hour_slot}`}
             >
               {slot.capacity_non_privileged}
+              <svg className="w-3 h-3 opacity-40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a4 4 0 01-1.414.586l-3 .586.586-3a4 4 0 01.586-1.414z" />
+              </svg>
             </button>
           )}
         </td>

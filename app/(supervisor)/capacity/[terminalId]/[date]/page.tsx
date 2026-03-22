@@ -22,7 +22,7 @@ export default function CapacityGridPage({
         <Link href="/capacity" className="text-gray-500 hover:text-gray-700">← Back</Link>
         <div>
           <h1 className="text-xl font-bold text-gray-900">Capacity — {date}</h1>
-          <p className="text-sm text-gray-500">Click a slot to edit its capacity. Changes save on blur or Enter.</p>
+          <p className="text-sm text-gray-500">Click any capacity value to edit it. Changes save on blur or Enter.</p>
         </div>
       </div>
 
