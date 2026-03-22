@@ -171,6 +171,65 @@ export async function seedTcTestData() {
   return { activeCompany, terminal, booking, privilegedBooking }
 }
 
+/**
+ * Seeds two terminals with capacity data for the capacity navigation E2E tests.
+ * Returns both terminal IDs and the seeded date.
+ */
+export async function seedCapacityNavData() {
+  const supabase = await createTestSupabaseClient()
+  const navDate = '2099-06-15'
+
+  const terminalA = await supabase
+    .from('port_terminals')
+    .upsert({ name: 'NAV-TERMINAL-A', is_active: true }, { onConflict: 'name' })
+    .select()
+    .single()
+
+  const terminalB = await supabase
+    .from('port_terminals')
+    .upsert({ name: 'NAV-TERMINAL-B', is_active: true }, { onConflict: 'name' })
+    .select()
+    .single()
+
+  if (!terminalA.data || !terminalB.data) return null
+
+  const slotsA = Array.from({ length: 24 }, (_, i) => ({
+    terminal_id: terminalA.data!.id,
+    date: navDate,
+    hour_slot: i,
+    capacity_privileged: 2,
+    capacity_non_privileged: 3,
+  }))
+  const slotsB = Array.from({ length: 24 }, (_, i) => ({
+    terminal_id: terminalB.data!.id,
+    date: navDate,
+    hour_slot: i,
+    capacity_privileged: 1,
+    capacity_non_privileged: 1,
+  }))
+
+  await supabase
+    .from('terminal_capacity')
+    .upsert([...slotsA, ...slotsB], { onConflict: 'terminal_id,date,hour_slot' })
+
+  return { terminalA: terminalA.data, terminalB: terminalB.data, navDate }
+}
+
+export async function cleanupCapacityNavData() {
+  const supabase = await createTestSupabaseClient()
+  for (const name of ['NAV-TERMINAL-A', 'NAV-TERMINAL-B']) {
+    const { data: terminal } = await supabase
+      .from('port_terminals')
+      .select('id')
+      .eq('name', name)
+      .single()
+    if (terminal) {
+      await supabase.from('terminal_capacity').delete().eq('terminal_id', terminal.id)
+      await supabase.from('port_terminals').delete().eq('id', terminal.id)
+    }
+  }
+}
+
 export async function cleanupTcTestData() {
   const supabase = await createTestSupabaseClient()
 

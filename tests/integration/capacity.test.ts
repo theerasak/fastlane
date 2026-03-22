@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 import { GET as getCapacity, PATCH as patchCapacity } from '@/app/api/capacity/[terminalId]/[date]/route'
+import { GET as getTerminals } from '@/app/api/terminals/route'
 import { createAuthRequest, createRequest } from '../helpers/request'
 import { mockTerminal, mockSlots, BOOKING_DATE } from '../mocks/db'
 
@@ -267,5 +268,132 @@ describe('PATCH /api/capacity/[terminalId]/[date]', () => {
     )
     const res = await patchCapacity(req, PATCH_PARAMS)
     expect(res.status).toBe(400)
+  })
+})
+
+// ── Navigation feature — terminals API (powers terminal dropdown) ─────────────
+
+describe('GET /api/terminals — supervisor access for terminal switcher', () => {
+  const mockTerminal2 = {
+    id: '00000000-0000-0000-0000-000000000011',
+    name: 'Terminal B',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+  }
+  const mockInactiveTerminal = {
+    id: '00000000-0000-0000-0000-000000000012',
+    name: 'Terminal C (inactive)',
+    is_active: false,
+    created_at: '2024-01-01T00:00:00Z',
+  }
+
+  it('supervisor can fetch terminals to populate the switcher', async () => {
+    server.use(
+      http.get(`${SUPA}/port_terminals`, () =>
+        HttpResponse.json([mockTerminal, mockTerminal2])
+      )
+    )
+    const req = await createAuthRequest('http://localhost/api/terminals', { role: 'supervisor' })
+    const res = await getTerminals(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data).toHaveLength(2)
+  })
+
+  it('returns all terminals including inactive (client filters active ones)', async () => {
+    server.use(
+      http.get(`${SUPA}/port_terminals`, () =>
+        HttpResponse.json([mockTerminal, mockTerminal2, mockInactiveTerminal])
+      )
+    )
+    const req = await createAuthRequest('http://localhost/api/terminals', { role: 'supervisor' })
+    const res = await getTerminals(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toHaveLength(3)
+  })
+
+  it('returns 403 for unauthenticated request', async () => {
+    const req = createRequest('http://localhost/api/terminals')
+    const res = await getTerminals(req)
+    expect(res.status).toBe(403)
+  })
+})
+
+// ── Navigation feature — capacity API handles date/terminal changes ────────────
+
+describe('GET /api/capacity — date and terminal navigation', () => {
+  const TOMORROW = '2099-01-01'
+  const YESTERDAY = '2098-12-30'
+  const TERMINAL2_ID = '00000000-0000-0000-0000-000000000011'
+
+  it('fetches capacity for a different (next) date correctly', async () => {
+    const req = await createAuthRequest(
+      `http://localhost/api/capacity/${mockTerminal.id}/${TOMORROW}`,
+      { role: 'supervisor' }
+    )
+    const res = await getCapacity(req, {
+      params: Promise.resolve({ terminalId: mockTerminal.id, date: TOMORROW }),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.data)).toBe(true)
+  })
+
+  it('fetches capacity for a different (previous) date correctly', async () => {
+    const req = await createAuthRequest(
+      `http://localhost/api/capacity/${mockTerminal.id}/${YESTERDAY}`,
+      { role: 'supervisor' }
+    )
+    const res = await getCapacity(req, {
+      params: Promise.resolve({ terminalId: mockTerminal.id, date: YESTERDAY }),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.data)).toBe(true)
+  })
+
+  it('fetches capacity for a switched terminal correctly', async () => {
+    server.use(
+      http.get(`${SUPA}/port_terminals`, ({ request }) => {
+        if (request.headers.get('Accept')?.includes('vnd.pgrst.object')) {
+          return HttpResponse.json({ id: TERMINAL2_ID, name: 'Terminal B', is_active: true })
+        }
+        return HttpResponse.json([{ id: TERMINAL2_ID, name: 'Terminal B', is_active: true }])
+      })
+    )
+    const req = await createAuthRequest(
+      `http://localhost/api/capacity/${TERMINAL2_ID}/${BOOKING_DATE}`,
+      { role: 'supervisor' }
+    )
+    const res = await getCapacity(req, {
+      params: Promise.resolve({ terminalId: TERMINAL2_ID, date: BOOKING_DATE }),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.data)).toBe(true)
+  })
+
+  it('returns 404 when switched-to terminal does not exist', async () => {
+    server.use(
+      http.get(`${SUPA}/port_terminals`, ({ request }) => {
+        if (request.headers.get('Accept')?.includes('vnd.pgrst.object')) {
+          return HttpResponse.json(
+            { code: 'PGRST116', message: 'no rows', details: '', hint: null },
+            { status: 406 }
+          )
+        }
+        return HttpResponse.json([])
+      })
+    )
+    const req = await createAuthRequest(
+      `http://localhost/api/capacity/nonexistent-terminal/${BOOKING_DATE}`,
+      { role: 'supervisor' }
+    )
+    const res = await getCapacity(req, {
+      params: Promise.resolve({ terminalId: 'nonexistent-terminal', date: BOOKING_DATE }),
+    })
+    expect(res.status).toBe(404)
   })
 })

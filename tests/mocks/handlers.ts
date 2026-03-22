@@ -128,6 +128,18 @@ export const handlers = [
   // ── audit_logs ────────────────────────────────────────────────────────
   http.post(`${SUPA}/audit_logs`, async () => new HttpResponse(null, { status: 201 })),
 
+  // ── audit_log (view alias used in booking detail GET) ─────────────────
+  http.get(`${SUPA}/audit_log`, () => HttpResponse.json(null)),
+
+  // ── RPC functions ─────────────────────────────────────────────────────
+  http.post(`${SUPA}/rpc/get_agent_booking_ids`, async () =>
+    HttpResponse.json([mockBooking.id])
+  ),
+
+  http.post(`${SUPA}/rpc/set_booking_created_by`, async () =>
+    HttpResponse.json(null)
+  ),
+
   // ── fastlane_registrations ────────────────────────────────────────────
   http.head(`${SUPA}/fastlane_registrations`, () => pgrstCount(0)),
   http.get(`${SUPA}/fastlane_registrations`, () => HttpResponse.json([])),

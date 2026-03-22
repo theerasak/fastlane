@@ -329,6 +329,90 @@ describe('is_privileged field visibility', () => {
   })
 })
 
+// ── POST /api/users — null optional fields (bug fix) ──────────────────────────
+
+describe('POST /api/users — null optional fields accepted', () => {
+  it('accepts null contact_person, phone, company_name without 400 error', async () => {
+    const req = await createAuthRequest('http://localhost/api/users', {
+      role: 'admin',
+      method: 'POST',
+      body: {
+        email: 'nullfields@test.com',
+        password: 'pass123',
+        role: 'agent',
+        contact_person: null,
+        phone: null,
+        company_name: null,
+      },
+    })
+    const res = await createUser(req)
+    expect(res.status).toBe(201)
+  })
+
+  it('accepts absent optional fields (undefined) without 400 error', async () => {
+    const req = await createAuthRequest('http://localhost/api/users', {
+      role: 'admin',
+      method: 'POST',
+      body: { email: 'nooptional@test.com', password: 'pass123', role: 'supervisor' },
+    })
+    const res = await createUser(req)
+    expect(res.status).toBe(201)
+  })
+
+  it('returns human-readable 400 message for invalid email field', async () => {
+    const req = await createAuthRequest('http://localhost/api/users', {
+      role: 'admin',
+      method: 'POST',
+      body: { email: 'bad', password: 'pass123', role: 'agent' },
+    })
+    const res = await createUser(req)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    // Error message should mention the field, not raw Zod internals
+    expect(typeof body.error).toBe('string')
+    expect(body.error.length).toBeGreaterThan(0)
+  })
+})
+
+// ── POST /api/users — is_privileged for new agent (bug fix) ───────────────────
+
+describe('POST /api/users — is_privileged flag for new agent', () => {
+  it('creates agent with is_privileged=true when flag is set', async () => {
+    server.use(
+      http.post(`${SUPA}/users`, async () =>
+        HttpResponse.json({ ...mockAgent, is_privileged: true }, { status: 201 })
+      )
+    )
+    const req = await createAuthRequest('http://localhost/api/users', {
+      role: 'admin',
+      method: 'POST',
+      body: {
+        email: 'priv@test.com',
+        password: 'pass123',
+        role: 'agent',
+        is_privileged: true,
+      },
+    })
+    const res = await createUser(req)
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.is_privileged).toBe(true)
+  })
+
+  it('creates agent with is_privileged=false by default', async () => {
+    const req = await createAuthRequest('http://localhost/api/users', {
+      role: 'admin',
+      method: 'POST',
+      body: { email: 'nonpriv@test.com', password: 'pass123', role: 'agent' },
+    })
+    const res = await createUser(req)
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    // default mock returns is_privileged: false
+    expect(body.data.is_privileged).toBe(false)
+  })
+})
+
 // ── login blocks inactive users ────────────────────────────────────────────────
 
 describe('Disabled user login', () => {

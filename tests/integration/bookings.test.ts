@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { server } from '../mocks/server'
 import { http, HttpResponse } from 'msw'
 import { GET as getBookings, POST as createBooking } from '@/app/api/bookings/route'
 import { GET as getBooking, PATCH as patchBooking } from '@/app/api/bookings/[id]/route'
 import { createAuthRequest, createRequest } from '../helpers/request'
-import { mockBooking, mockTerminal, mockCompany, mockInactiveCompany, mockPrivilegedAgent } from '../mocks/db'
+import { mockAdmin, mockAgent, mockBooking, mockTerminal, mockCompany, mockInactiveCompany, mockPrivilegedAgent } from '../mocks/db'
 import { pgrstSingle } from '../mocks/handlers'
 
 const SUPA = 'https://mock-supabase.test/rest/v1'
@@ -158,6 +158,85 @@ describe('POST /api/bookings', () => {
   })
 })
 
+// ── GET /api/bookings — Agent filter via RPC (bug fix) ───────────────────────
+
+describe('GET /api/bookings — agent filter via RPC', () => {
+  it('agent GET calls get_agent_booking_ids RPC and returns only own bookings', async () => {
+    let rpcCalled = false
+    server.use(
+      http.post(`${SUPA}/rpc/get_agent_booking_ids`, async ({ request }) => {
+        const body = await request.json() as { p_user_id: string }
+        rpcCalled = true
+        expect(body.p_user_id).toBe(`test-agent-id`)
+        return HttpResponse.json([mockBooking.id])
+      })
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', { role: 'agent' })
+    const res = await getBookings(req)
+    expect(res.status).toBe(200)
+    expect(rpcCalled).toBe(true)
+    const body = await res.json()
+    expect(Array.isArray(body.data)).toBe(true)
+  })
+
+  it('agent with no bookings gets empty list without hitting bookings table', async () => {
+    server.use(
+      http.post(`${SUPA}/rpc/get_agent_booking_ids`, async () =>
+        HttpResponse.json([])
+      )
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', { role: 'agent' })
+    const res = await getBookings(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toEqual([])
+  })
+
+  it('admin GET does NOT call get_agent_booking_ids RPC', async () => {
+    let rpcCalled = false
+    server.use(
+      http.post(`${SUPA}/rpc/get_agent_booking_ids`, async () => {
+        rpcCalled = true
+        return HttpResponse.json([])
+      })
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', { role: 'admin' })
+    const res = await getBookings(req)
+    expect(res.status).toBe(200)
+    expect(rpcCalled).toBe(false)
+  })
+})
+
+// ── POST /api/bookings — set_booking_created_by RPC (bug fix) ────────────────
+
+describe('POST /api/bookings — created_by set via RPC', () => {
+  it('calls set_booking_created_by RPC after booking insert', async () => {
+    let rpcCalled = false
+    server.use(
+      http.post(`${SUPA}/rpc/set_booking_created_by`, async ({ request }) => {
+        const body = await request.json() as { p_id: string; p_user_id: string }
+        rpcCalled = true
+        expect(body.p_id).toBe(mockBooking.id)
+        expect(body.p_user_id).toBe('test-agent-id')
+        return HttpResponse.json(null)
+      })
+    )
+    const req = await createAuthRequest('http://localhost/api/bookings', {
+      role: 'agent',
+      method: 'POST',
+      body: {
+        booking_number: 'BK-RPC-001',
+        terminal_id: mockTerminal.id,
+        truck_company_id: mockCompany.id,
+        num_trucks: 1,
+      },
+    })
+    const res = await createBooking(req)
+    expect(res.status).toBe(201)
+    expect(rpcCalled).toBe(true)
+  })
+})
+
 // ── POST /api/bookings — Privilege flag ───────────────────────────────────────
 
 describe('POST /api/bookings — is_privileged_booking flag', () => {
@@ -248,5 +327,105 @@ describe('PATCH /api/bookings/[id]', () => {
     })
     const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
     expect(res.status).toBe(403)
+  })
+})
+
+// ── PATCH /api/bookings/[id] — admin-only fields (bug fix) ───────────────────
+
+describe('PATCH /api/bookings/[id] — admin-only fields', () => {
+  it('agent cannot change truck_company_id', async () => {
+    const req = await createAuthRequest(`http://localhost/api/bookings/${mockBooking.id}`, {
+      role: 'agent',
+      method: 'PATCH',
+      body: { truck_company_id: mockCompany.id },
+    })
+    const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
+    expect(res.status).toBe(403)
+  })
+
+  it('agent cannot change is_privileged_booking', async () => {
+    const req = await createAuthRequest(`http://localhost/api/bookings/${mockBooking.id}`, {
+      role: 'agent',
+      method: 'PATCH',
+      body: { is_privileged_booking: true },
+    })
+    const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
+    expect(res.status).toBe(403)
+  })
+
+  it('agent cannot change created_by', async () => {
+    const req = await createAuthRequest(`http://localhost/api/bookings/${mockBooking.id}`, {
+      role: 'agent',
+      method: 'PATCH',
+      body: { created_by: mockAdmin.id },
+    })
+    const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
+    expect(res.status).toBe(403)
+  })
+
+  it('admin can change truck_company_id', async () => {
+    const req = await createAuthRequest(`http://localhost/api/bookings/${mockBooking.id}`, {
+      role: 'admin',
+      method: 'PATCH',
+      body: { truck_company_id: mockCompany.id },
+    })
+    const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
+    expect(res.status).toBe(200)
+  })
+
+  it('admin can change is_privileged_booking', async () => {
+    server.use(
+      http.patch(`${SUPA}/bookings`, () =>
+        pgrstSingle({ ...mockBooking, is_privileged_booking: true })
+      )
+    )
+    const req = await createAuthRequest(`http://localhost/api/bookings/${mockBooking.id}`, {
+      role: 'admin',
+      method: 'PATCH',
+      body: { is_privileged_booking: true },
+    })
+    const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.is_privileged_booking).toBe(true)
+  })
+
+  it('admin can change created_by via RPC', async () => {
+    let rpcCalled = false
+    server.use(
+      http.post(`${SUPA}/rpc/set_booking_created_by`, async ({ request }) => {
+        const body = await request.json() as { p_id: string; p_user_id: string }
+        rpcCalled = true
+        expect(body.p_id).toBe(mockBooking.id)
+        expect(body.p_user_id).toBe(mockAgent.id)
+        return HttpResponse.json(null)
+      })
+    )
+    const req = await createAuthRequest(`http://localhost/api/bookings/${mockBooking.id}`, {
+      role: 'admin',
+      method: 'PATCH',
+      body: { created_by: mockAgent.id },
+    })
+    const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
+    expect(res.status).toBe(200)
+    expect(rpcCalled).toBe(true)
+  })
+
+  it('admin can set created_by to null via RPC', async () => {
+    let rpcCalled = false
+    server.use(
+      http.post(`${SUPA}/rpc/set_booking_created_by`, async () => {
+        rpcCalled = true
+        return HttpResponse.json(null)
+      })
+    )
+    const req = await createAuthRequest(`http://localhost/api/bookings/${mockBooking.id}`, {
+      role: 'admin',
+      method: 'PATCH',
+      body: { created_by: null },
+    })
+    const res = await patchBooking(req, { params: Promise.resolve({ id: mockBooking.id }) })
+    expect(res.status).toBe(200)
+    expect(rpcCalled).toBe(true)
   })
 })

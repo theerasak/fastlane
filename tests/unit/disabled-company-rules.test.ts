@@ -18,11 +18,12 @@ import { NextRequest } from 'next/server'
 
 const mockGetSession = vi.fn()
 const mockFrom = vi.fn()
+const mockRpc = vi.fn().mockResolvedValue({ data: null, error: null })
 
 vi.mock('@/lib/auth/session', () => ({ getSession: mockGetSession }))
 vi.mock('@/lib/audit', () => ({ writeAuditLog: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/supabase/server', () => ({
-  getServerClient: () => ({ from: mockFrom }),
+  getServerClient: () => ({ from: mockFrom, rpc: mockRpc }),
 }))
 
 // Import route handlers after mocks are registered
