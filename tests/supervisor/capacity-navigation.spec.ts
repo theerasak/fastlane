@@ -49,7 +49,7 @@ test.describe('Supervisor — Capacity Grid Navigation', () => {
 
   test('capacity grid is visible with 24 slots', async ({ page }) => {
     await expect(page.getByTestId('capacity-grid')).toBeVisible()
-    await expect(page.getByTestId(/slot-cell-\d+/)).toHaveCount(24)
+    await expect(page.getByTestId(/slot-priv-cell-\d+/)).toHaveCount(24)
   })
 
   // ── Date navigation — next day ────────────────────────────────────────────

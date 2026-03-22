@@ -34,7 +34,7 @@ test.describe('Supervisor — Capacity Grid', () => {
 
       await expect(page.getByTestId('capacity-grid')).toBeVisible()
       // Should show 24 slots
-      const cells = page.getByTestId(/slot-cell-\d+/)
+      const cells = page.getByTestId(/slot-priv-cell-\d+/)
       await expect(cells).toHaveCount(24)
     }
   })
