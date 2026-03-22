@@ -31,6 +31,11 @@ export async function GET(req: NextRequest) {
       `)
       .order('created_at', { ascending: false })
 
+    // Agents only see bookings they created
+    if (session.role === 'agent') {
+      query = query.eq('created_by', session.id)
+    }
+
     if (bookingNumber) {
       query = query.ilike('booking_number', `%${bookingNumber}%`)
     }
@@ -100,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('bookings')
-      .insert({ ...parsed.data, is_privileged_booking: isPrivilegedBooking })
+      .insert({ ...parsed.data, is_privileged_booking: isPrivilegedBooking, created_by: session.id })
       .select('id, booking_number, terminal_id, truck_company_id, num_trucks, fastlane_token, token_cancelled, is_privileged_booking, status, created_at, booked_at, closed_at')
       .single()
 

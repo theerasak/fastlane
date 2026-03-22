@@ -70,6 +70,7 @@ CREATE TABLE bookings (
   is_privileged_booking BOOLEAN NOT NULL DEFAULT FALSE,
   status               booking_status NOT NULL DEFAULT 'FILLING-IN',
   booking_date         DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_by           UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   booked_at            TIMESTAMPTZ,
   closed_at            TIMESTAMPTZ
