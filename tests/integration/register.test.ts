@@ -21,7 +21,7 @@ describe('POST /api/register/[token]/plates', () => {
   it('adds a plate and returns 201', async () => {
     const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
       method: 'POST',
-      body: { license_plate: 'AB-1234', hour_slot: 9 },
+      body: { license_plate: 'AB-1234', container_number: 'ABCD1234567', hour_slot: 9 },
     })
     const res = await addPlate(req, PARAMS)
     expect(res.status).toBe(201)
@@ -32,7 +32,7 @@ describe('POST /api/register/[token]/plates', () => {
   it('returns 401 for unauthenticated request', async () => {
     const req = createRequest(`http://localhost/api/register/${TOKEN}/plates`, {
       method: 'POST',
-      body: { license_plate: 'AB-1234', hour_slot: 9 },
+      body: { license_plate: 'AB-1234', container_number: 'ABCD1234567', hour_slot: 9 },
     })
     const res = await addPlate(req, PARAMS)
     expect(res.status).toBe(401)
@@ -62,7 +62,7 @@ describe('POST /api/register/[token]/plates', () => {
     )
     const req = await createTcRequest('http://localhost/api/register/UNKNOWN/plates', {
       method: 'POST',
-      body: { license_plate: 'AB-1234', hour_slot: 9 },
+      body: { license_plate: 'AB-1234', container_number: 'ABCD1234567', hour_slot: 9 },
     })
     const res = await addPlate(req, { params: Promise.resolve({ token: 'UNKNOWN' }) })
     expect(res.status).toBe(404)
@@ -76,7 +76,7 @@ describe('POST /api/register/[token]/plates', () => {
     )
     const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
       method: 'POST',
-      body: { license_plate: 'AB-1234', hour_slot: 9 },
+      body: { license_plate: 'AB-1234', container_number: 'ABCD1234567', hour_slot: 9 },
     })
     const res = await addPlate(req, PARAMS)
     expect(res.status).toBe(403)
@@ -94,7 +94,7 @@ describe('POST /api/register/[token]/plates', () => {
     )
     const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
       method: 'POST',
-      body: { license_plate: 'XY-9999', hour_slot: 9 },
+      body: { license_plate: 'XY-9999', container_number: 'ABCD1234567', hour_slot: 9 },
     })
     const res = await addPlate(req, PARAMS)
     expect(res.status).toBe(409)
@@ -110,7 +110,7 @@ describe('POST /api/register/[token]/plates', () => {
     )
     const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
       method: 'POST',
-      body: { license_plate: 'XY-9999', hour_slot: 9 },
+      body: { license_plate: 'XY-9999', container_number: 'ABCD1234567', hour_slot: 9 },
     })
     const res = await addPlate(req, PARAMS)
     expect(res.status).toBe(409)

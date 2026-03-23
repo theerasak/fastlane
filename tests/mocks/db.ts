@@ -142,6 +142,7 @@ export const mockRegistration = {
   hour_slot: 9,
   terminal_id: mockTerminal.id,
   license_plate: 'ABC-1234',
+  container_number: 'ABCD1234567',
   is_deleted: false,
   registered_at: '2026-03-11T09:00:00Z',
   deleted_at: null,

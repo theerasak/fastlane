@@ -37,21 +37,22 @@ describe('LicensePlateSchema', () => {
 
 describe('AddPlateSchema', () => {
   it('accepts valid body', () => {
-    const result = AddPlateSchema.parse({ license_plate: 'ABC-1234', hour_slot: 9 })
+    const result = AddPlateSchema.parse({ license_plate: 'ABC-1234', container_number: 'ABCD1234567', hour_slot: 9 })
     expect(result.license_plate).toBe('ABC-1234')
+    expect(result.container_number).toBe('ABCD1234567')
     expect(result.hour_slot).toBe(9)
   })
 
   it('rejects hour_slot < 0', () => {
-    expect(() => AddPlateSchema.parse({ license_plate: 'ABC-1234', hour_slot: -1 })).toThrow()
+    expect(() => AddPlateSchema.parse({ license_plate: 'ABC-1234', container_number: 'ABCD1234567', hour_slot: -1 })).toThrow()
   })
 
   it('rejects hour_slot > 23', () => {
-    expect(() => AddPlateSchema.parse({ license_plate: 'ABC-1234', hour_slot: 24 })).toThrow()
+    expect(() => AddPlateSchema.parse({ license_plate: 'ABC-1234', container_number: 'ABCD1234567', hour_slot: 24 })).toThrow()
   })
 
   it('rejects non-integer hour_slot', () => {
-    expect(() => AddPlateSchema.parse({ license_plate: 'ABC-1234', hour_slot: 9.5 })).toThrow()
+    expect(() => AddPlateSchema.parse({ license_plate: 'ABC-1234', container_number: 'ABCD1234567', hour_slot: 9.5 })).toThrow()
   })
 })
 

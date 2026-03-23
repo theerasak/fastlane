@@ -8,7 +8,7 @@ import { HOUR_LABELS } from '@/lib/constants'
 import type { SlotAvailability } from '@/types/api'
 
 interface PlateInputProps {
-  onAdd: (licensePlate: string, hourSlot: number) => Promise<void>
+  onAdd: (licensePlate: string, containerNumber: string, hourSlot: number) => Promise<void>
   disabled?: boolean
   slotAvailability: SlotAvailability[]
 }
@@ -25,8 +25,18 @@ function formatPlateInput(raw: string): string {
   return `${prefix}-${digits.slice(0, 4)}`
 }
 
+function formatContainerInput(raw: string): string {
+  // 4 uppercase letters + up to 7 digits, no separator
+  const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const letters = clean.slice(0, 4).replace(/[^A-Z]/g, '')
+  const rest = clean.slice(letters.length)
+  const digits = rest.replace(/[^0-9]/g, '').slice(0, 7)
+  return letters + digits
+}
+
 export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProps) {
   const [plate, setPlate] = useState('')
+  const [container, setContainer] = useState('')
   const [hourSlot, setHourSlot] = useState('')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
@@ -42,15 +52,18 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!plate.trim()) { setError('Please enter a license plate'); return }
+    if (!container.trim()) { setError('Please enter a container number'); return }
+    if (!/^[A-Z]{4}\d{7}$/.test(container)) { setError('Container number must be 4 letters + 7 digits (e.g. ABCD1234567)'); return }
     if (!hourSlot) { setError('Please select a time slot'); return }
     setError('')
     setAdding(true)
     try {
-      await onAdd(plate.trim().toUpperCase(), Number(hourSlot))
+      await onAdd(plate.trim().toUpperCase(), container.trim().toUpperCase(), Number(hourSlot))
       setPlate('')
+      setContainer('')
       setHourSlot('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add plate')
+      setError(err instanceof Error ? err.message : 'Failed to add registration')
     } finally {
       setAdding(false)
     }
@@ -74,8 +87,9 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="flex gap-2">
-        <div className="flex-1">
+      <div className="grid grid-cols-1 tablet:grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">License Plate</label>
           <Input
             placeholder="AB-1234"
             value={plate}
@@ -84,7 +98,20 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
             data-testid="plate-input"
           />
         </div>
-        <div className="w-48 tablet:w-56">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Container Number</label>
+          <Input
+            placeholder="ABCD1234567"
+            value={container}
+            onChange={e => setContainer(formatContainerInput(e.target.value))}
+            disabled={disabled || adding}
+            maxLength={11}
+            data-testid="container-input"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <div className="flex-1">
           <Select
             value={hourSlot}
             onChange={e => setHourSlot(e.target.value)}

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const parsed = AddPlateSchema.safeParse(body)
     if (!parsed.success) throw ApiError.badRequest(parsed.error.issues[0]?.message)
 
-    const { license_plate, hour_slot } = parsed.data
+    const { license_plate, container_number, hour_slot } = parsed.data
     const supabase = getServerClient()
 
     // Check: not over num_trucks limit
@@ -84,8 +84,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         hour_slot,
         terminal_id: booking.terminal_id,
         license_plate,
+        container_number,
       })
-      .select('id, booking_id, hour_slot, terminal_id, license_plate, is_deleted, registered_at, deleted_at')
+      .select('id, booking_id, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
       .single()
 
     if (error) throw ApiError.internal(error.message)
@@ -137,7 +138,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
     // Fetch current registration to get current hour_slot
     const { data: currentReg, error: regError } = await supabase
       .from('fastlane_registrations')
-      .select('id, hour_slot, license_plate')
+      .select('id, hour_slot, license_plate, container_number')
       .eq('id', registrationId)
       .eq('booking_id', booking.id)
       .eq('is_deleted', false)
@@ -147,6 +148,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
 
     const newHourSlot = parsed.data.hour_slot
     const newLicensePlate = parsed.data.license_plate
+    const newContainerNumber = parsed.data.container_number
 
     const updateFields: Record<string, unknown> = {}
 
@@ -178,16 +180,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       }
 
       updateFields.hour_slot = newHourSlot
-    } else if (newHourSlot === undefined || newHourSlot === currentReg.hour_slot) {
-      // Only plate is changing: must be >1h before the current slot
-      if (newLicensePlate !== undefined) {
-        if (!isWithinDeadline(bookingDate, currentReg.hour_slot, 1)) {
-          throw new ApiError('Cannot change plate: slot time must be more than 1 hour in advance', 409, 'DEADLINE_PASSED')
-        }
-      }
     }
 
+    // Container number: locked 12h before slot
+    if (newContainerNumber !== undefined) {
+      if (!isWithinDeadline(bookingDate, currentReg.hour_slot, 12)) {
+        throw new ApiError('Cannot change container number: less than 12 hours before slot time', 409, 'DEADLINE_PASSED')
+      }
+      updateFields.container_number = newContainerNumber
+    }
+
+    // License plate: locked 1h before slot
     if (newLicensePlate !== undefined) {
+      if (!isWithinDeadline(bookingDate, currentReg.hour_slot, 1)) {
+        throw new ApiError('Cannot change plate: slot time must be more than 1 hour in advance', 409, 'DEADLINE_PASSED')
+      }
       updateFields.license_plate = newLicensePlate
     }
 
@@ -201,7 +208,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       .eq('id', registrationId)
       .eq('booking_id', booking.id)
       .eq('is_deleted', false)
-      .select('id, booking_id, hour_slot, terminal_id, license_plate, is_deleted, registered_at, deleted_at')
+      .select('id, booking_id, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
       .single()
 
     if (error || !data) throw ApiError.notFound('Registration not found')

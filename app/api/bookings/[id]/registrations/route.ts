@@ -4,15 +4,17 @@ import { getServerClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import { handleApiError, ApiError } from '@/lib/api/errors'
 
-const SELECT_FIELDS = 'id, booking_id, hour_slot, terminal_id, license_plate, is_deleted, registered_at, deleted_at'
+const SELECT_FIELDS = 'id, booking_id, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at'
 
 const AddRegSchema = z.object({
   license_plate: z.string().min(1).max(20),
+  container_number: z.string().min(1).max(11),
   hour_slot: z.number().int().min(0).max(23),
 })
 
 const EditRegSchema = z.object({
   license_plate: z.string().min(1).max(20).optional(),
+  container_number: z.string().min(1).max(11).optional(),
   hour_slot: z.number().int().min(0).max(23).optional(),
 })
 
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         booking_id,
         terminal_id: booking.terminal_id,
         license_plate: parsed.data.license_plate,
+        container_number: parsed.data.container_number,
         hour_slot: parsed.data.hour_slot,
       })
       .select(SELECT_FIELDS)
@@ -120,6 +123,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const updates: Record<string, unknown> = {}
     if (parsed.data.license_plate !== undefined) updates.license_plate = parsed.data.license_plate
+    if (parsed.data.container_number !== undefined) updates.container_number = parsed.data.container_number
     if (parsed.data.hour_slot !== undefined) updates.hour_slot = parsed.data.hour_slot
 
     const { data, error } = await supabase

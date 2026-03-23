@@ -175,6 +175,7 @@ export interface RegistrationResponse {
   hour_slot: number
   terminal_id: string
   license_plate: string
+  container_number: string
   is_deleted: boolean
   registered_at: string
   deleted_at: string | null
@@ -182,11 +183,13 @@ export interface RegistrationResponse {
 
 export interface AddPlateRequest {
   license_plate: string
+  container_number: string
   hour_slot: number
 }
 
 export interface EditPlateRequest {
-  license_plate: string
+  license_plate?: string
+  container_number?: string
 }
 
 export interface SlotAvailability {

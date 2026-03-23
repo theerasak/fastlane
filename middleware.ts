@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = [
   /^\/api\/auth\//,
   /^\/api\/register\/auth\//,
   /^\/api\/cron\//,
+  /^\/api\/probe$/,
   /^\/_next\//,
   /^\/favicon/,
 ]

@@ -77,14 +77,15 @@ CREATE TABLE bookings (
 );
 
 CREATE TABLE fastlane_registrations (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  booking_id    UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-  hour_slot     SMALLINT NOT NULL CHECK (hour_slot >= 0 AND hour_slot <= 23),
-  terminal_id   UUID NOT NULL REFERENCES port_terminals(id),
-  license_plate TEXT NOT NULL,
-  is_deleted    BOOLEAN NOT NULL DEFAULT FALSE,
-  registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deleted_at    TIMESTAMPTZ
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id       UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  hour_slot        SMALLINT NOT NULL CHECK (hour_slot >= 0 AND hour_slot <= 23),
+  terminal_id      UUID NOT NULL REFERENCES port_terminals(id),
+  license_plate    TEXT NOT NULL,
+  container_number TEXT NOT NULL,
+  is_deleted       BOOLEAN NOT NULL DEFAULT FALSE,
+  registered_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at       TIMESTAMPTZ
 );
 
 -- ============================================================

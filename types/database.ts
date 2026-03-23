@@ -74,6 +74,7 @@ export interface DbFastlaneRegistration {
   hour_slot: number
   terminal_id: string
   license_plate: string
+  container_number: string
   is_deleted: boolean
   registered_at: string
   deleted_at: string | null

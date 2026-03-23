@@ -91,7 +91,7 @@ describe('POST /api/bookings/[id]/registrations', () => {
       {
         role: 'admin',
         method: 'POST',
-        body: { license_plate: 'XY-9999', hour_slot: 10 },
+        body: { license_plate: 'XY-9999', container_number: 'ABCD1234567', hour_slot: 10 },
       }
     )
     const res = await addRegistration(req, routeParams)
@@ -103,7 +103,7 @@ describe('POST /api/bookings/[id]/registrations', () => {
   it('returns 403 for agent', async () => {
     const req = await createAuthRequest(
       `http://localhost/api/bookings/${BOOKING_ID}/registrations`,
-      { role: 'agent', method: 'POST', body: { license_plate: 'XY-9999', hour_slot: 10 } }
+      { role: 'agent', method: 'POST', body: { license_plate: 'XY-9999', container_number: 'ABCD1234567', hour_slot: 10 } }
     )
     const res = await addRegistration(req, routeParams)
     expect(res.status).toBe(403)
@@ -123,7 +123,7 @@ describe('POST /api/bookings/[id]/registrations', () => {
       {
         role: 'admin',
         method: 'POST',
-        body: { license_plate: 'ZZ-0001', hour_slot: 8 },
+        body: { license_plate: 'ZZ-0001', container_number: 'ABCD1234567', hour_slot: 8 },
       }
     )
     const res = await addRegistration(req, routeParams)
@@ -146,7 +146,7 @@ describe('POST /api/bookings/[id]/registrations', () => {
       {
         role: 'admin',
         method: 'POST',
-        body: { license_plate: 'ZZ-0002', hour_slot: 8 },
+        body: { license_plate: 'ZZ-0002', container_number: 'ABCD1234567', hour_slot: 8 },
       }
     )
     const res = await addRegistration(req, routeParams)
@@ -187,7 +187,7 @@ describe('POST /api/bookings/[id]/registrations', () => {
       {
         role: 'admin',
         method: 'POST',
-        body: { license_plate: 'AA-0001', hour_slot: 9 },
+        body: { license_plate: 'AA-0001', container_number: 'ABCD1234567', hour_slot: 9 },
       }
     )
     const res = await addRegistration(req, routeParams)
@@ -215,7 +215,7 @@ describe('POST /api/bookings/[id]/registrations', () => {
       {
         role: 'admin',
         method: 'POST',
-        body: { license_plate: 'BB-0001', hour_slot: 9 },
+        body: { license_plate: 'BB-0001', container_number: 'ABCD1234567', hour_slot: 9 },
       }
     )
     const res = await addRegistration(req, routeParams)
