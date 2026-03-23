@@ -41,10 +41,48 @@ describe('POST /api/register/[token]/plates', () => {
   it('returns 400 for invalid license plate', async () => {
     const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
       method: 'POST',
-      body: { license_plate: '', hour_slot: 9 },
+      body: { license_plate: '', container_number: 'ABCD1234567', hour_slot: 9 },
     })
     const res = await addPlate(req, PARAMS)
     expect(res.status).toBe(400)
+  })
+
+  it('returns 400 when container_number is missing', async () => {
+    const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
+      method: 'POST',
+      body: { license_plate: 'AB-1234', hour_slot: 9 },
+    })
+    const res = await addPlate(req, PARAMS)
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for invalid container_number format (too short)', async () => {
+    const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
+      method: 'POST',
+      body: { license_plate: 'AB-1234', container_number: 'ABC123', hour_slot: 9 },
+    })
+    const res = await addPlate(req, PARAMS)
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for invalid container_number format (digits before letters)', async () => {
+    const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
+      method: 'POST',
+      body: { license_plate: 'AB-1234', container_number: '1234ABCD567', hour_slot: 9 },
+    })
+    const res = await addPlate(req, PARAMS)
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 201 and includes container_number in response', async () => {
+    const req = await createTcRequest(`http://localhost/api/register/${TOKEN}/plates`, {
+      method: 'POST',
+      body: { license_plate: 'AB-1234', container_number: 'ABCD1234567', hour_slot: 9 },
+    })
+    const res = await addPlate(req, PARAMS)
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.container_number).toBe('ABCD1234567')
   })
 
   it('returns 400 for invalid hour_slot', async () => {
@@ -422,5 +460,69 @@ describe('PATCH /api/register/[token]/plates — time restrictions', () => {
     })
     const res = await editPlate(req, PARAMS)
     expect(res.status).toBe(200)
+  })
+
+  it('returns 409 DEADLINE_PASSED when changing container_number within 12h', async () => {
+    server.use(
+      http.get('https://mock-supabase.test/rest/v1/bookings', () =>
+        pgrstSingle({ ...mockBooking, booking_date: PAST_BOOKING_DATE, truck_company_id: mockCompany.id })
+      ),
+      http.get('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
+        pgrstSingle({ ...mockRegistration })
+      )
+    )
+    const url = `http://localhost/api/register/${TOKEN}/plates?id=${mockRegistration.id}`
+    const req = await createTcRequest(url, {
+      method: 'PATCH',
+      body: { container_number: 'ZZZZ9999999' },
+    })
+    const res = await editPlate(req, PARAMS)
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.code).toBe('DEADLINE_PASSED')
+  })
+
+  it('allows container_number change when >12h before slot', async () => {
+    server.use(
+      http.get('https://mock-supabase.test/rest/v1/bookings', () =>
+        pgrstSingle({ ...mockBooking, booking_date: FUTURE_BOOKING_DATE, truck_company_id: mockCompany.id })
+      ),
+      http.get('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
+        pgrstSingle({ ...mockRegistration })
+      ),
+      http.patch('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
+        pgrstSingle({ ...mockRegistration, container_number: 'ZZZZ9999999' })
+      )
+    )
+    const url = `http://localhost/api/register/${TOKEN}/plates?id=${mockRegistration.id}`
+    const req = await createTcRequest(url, {
+      method: 'PATCH',
+      body: { container_number: 'ZZZZ9999999' },
+    })
+    const res = await editPlate(req, PARAMS)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.container_number).toBe('ZZZZ9999999')
+  })
+
+  it('allows plate change but blocks container_number change in same request within 12h', async () => {
+    // Within 12h: plate change (also past 1h) blocked, container_number blocked
+    server.use(
+      http.get('https://mock-supabase.test/rest/v1/bookings', () =>
+        pgrstSingle({ ...mockBooking, booking_date: PAST_BOOKING_DATE, truck_company_id: mockCompany.id })
+      ),
+      http.get('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
+        pgrstSingle({ ...mockRegistration })
+      )
+    )
+    const url = `http://localhost/api/register/${TOKEN}/plates?id=${mockRegistration.id}`
+    const req = await createTcRequest(url, {
+      method: 'PATCH',
+      body: { license_plate: 'NE-9999', container_number: 'ZZZZ9999999' },
+    })
+    const res = await editPlate(req, PARAMS)
+    // container_number check happens first — 409 DEADLINE_PASSED
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe('DEADLINE_PASSED')
   })
 })

@@ -113,6 +113,7 @@ test.describe('Registration Page — /register/[token]', () => {
 
   test('can add a plate and see it in the registered list', async ({ page }) => {
     const plateInput = page.getByTestId('plate-input')
+    const containerInput = page.getByTestId('container-input')
     const slotSelect = page.getByTestId('hour-slot-select')
     const addBtn = page.getByTestId('add-plate-btn')
 
@@ -120,6 +121,7 @@ test.describe('Registration Page — /register/[token]', () => {
     await slotSelect.selectOption({ index: 1 })
     // Use a valid plate format: 3 alphanumeric + dash + 4 digits
     await plateInput.fill('abc0001')  // formatter will produce ABC-0001
+    await containerInput.pressSequentially('ABCD1234567')
     await addBtn.click()
 
     // Registration should appear

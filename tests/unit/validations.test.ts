@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { LicensePlateSchema, AddPlateSchema, EditPlateSchema } from '@/lib/validations/register'
+import { LicensePlateSchema, ContainerNumberSchema, AddPlateSchema, EditPlateSchema } from '@/lib/validations/register'
 
 describe('LicensePlateSchema', () => {
   it('accepts valid plates', () => {
@@ -32,6 +32,48 @@ describe('LicensePlateSchema', () => {
 
   it('rejects plates with invalid chars like @', () => {
     expect(() => LicensePlateSchema.parse('AB@1234')).toThrow()
+  })
+})
+
+describe('ContainerNumberSchema', () => {
+  it('accepts valid container number ABCD1234567', () => {
+    expect(ContainerNumberSchema.parse('ABCD1234567')).toBe('ABCD1234567')
+  })
+
+  it('rejects lowercase letters (regex validates before transform)', () => {
+    expect(() => ContainerNumberSchema.parse('abcd1234567')).toThrow()
+  })
+
+  it('rejects fewer than 4 letters prefix (3 letters)', () => {
+    expect(() => ContainerNumberSchema.parse('ABC1234567')).toThrow()
+  })
+
+  it('rejects more than 4 letters prefix (5 letters)', () => {
+    expect(() => ContainerNumberSchema.parse('ABCDE123456')).toThrow()
+  })
+
+  it('rejects digits before letters', () => {
+    expect(() => ContainerNumberSchema.parse('1234ABCD567')).toThrow()
+  })
+
+  it('rejects fewer than 7 digits suffix', () => {
+    expect(() => ContainerNumberSchema.parse('ABCD123456')).toThrow()
+  })
+
+  it('rejects more than 7 digits suffix (8 digits)', () => {
+    expect(() => ContainerNumberSchema.parse('ABCD12345678')).toThrow()
+  })
+
+  it('rejects empty string', () => {
+    expect(() => ContainerNumberSchema.parse('')).toThrow()
+  })
+
+  it('rejects special characters', () => {
+    expect(() => ContainerNumberSchema.parse('ABCD-234567')).toThrow()
+  })
+
+  it('rejects mixed letters in suffix', () => {
+    expect(() => ContainerNumberSchema.parse('ABCD123456X')).toThrow()
   })
 })
 
@@ -73,7 +115,22 @@ describe('EditPlateSchema', () => {
     expect(result.hour_slot).toBe(5)
   })
 
-  it('rejects when both license_plate and hour_slot are missing', () => {
+  it('accepts container_number only', () => {
+    const result = EditPlateSchema.parse({ container_number: 'ABCD1234567' })
+    expect(result.container_number).toBe('ABCD1234567')
+  })
+
+  it('accepts license_plate and container_number together', () => {
+    const result = EditPlateSchema.parse({ license_plate: 'AB-1234', container_number: 'ABCD1234567' })
+    expect(result.license_plate).toBe('AB-1234')
+    expect(result.container_number).toBe('ABCD1234567')
+  })
+
+  it('rejects invalid container_number in edit schema', () => {
+    expect(() => EditPlateSchema.parse({ container_number: 'TOOLONG12345' })).toThrow()
+  })
+
+  it('rejects when license_plate, container_number and hour_slot are all missing', () => {
     expect(() => EditPlateSchema.parse({})).toThrow()
   })
 })
