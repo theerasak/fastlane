@@ -82,7 +82,7 @@ export function InvoiceClient() {
             />
           </div>
           <Button type="submit" loading={loading}>
-            Generate
+            View
           </Button>
         </div>
       </form>

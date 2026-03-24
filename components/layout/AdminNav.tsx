@@ -58,7 +58,7 @@ const adminNavItems: NavItem[] = [
 ]
 
 const invoiceNavItem: NavItem = {
-  href: '/invoice',
+  href: '/invoice-summary',
   label: 'Invoice',
   icon: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

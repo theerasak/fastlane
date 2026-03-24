@@ -22,7 +22,7 @@ const agentMobileItems = [
 const agentPrivilegedMobileItems = [
   { href: '/bookings', label: 'Bookings' },
   { href: '/import', label: 'Import' },
-  { href: '/invoice', label: 'Invoice' },
+  { href: '/invoice-summary', label: 'Invoice' },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
