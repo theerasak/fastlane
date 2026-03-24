@@ -19,6 +19,12 @@ const agentMobileItems = [
   { href: '/import', label: 'Import' },
 ]
 
+const agentPrivilegedMobileItems = [
+  { href: '/bookings', label: 'Bookings' },
+  { href: '/import', label: 'Import' },
+  { href: '/invoice', label: 'Invoice' },
+]
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const token = cookieStore.get(COOKIE_NAME)?.value
@@ -34,17 +40,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!isAdmin && !isAgent) redirect('/login')
 
   let companyName: string | undefined
+  let isPrivileged = false
   if (isAgent) {
     const supabase = getServerClient()
     const { data } = await supabase
       .from('users')
-      .select('company_name')
+      .select('company_name, is_privileged')
       .eq('id', payload.sub)
       .single()
-    companyName = (data as { company_name: string | null } | null)?.company_name ?? undefined
+    companyName = (data as { company_name: string | null; is_privileged: boolean } | null)?.company_name ?? undefined
+    isPrivileged = (data as { company_name: string | null; is_privileged: boolean } | null)?.is_privileged ?? false
   }
 
-  const mobileItems = isAdmin ? adminMobileItems : agentMobileItems
+  const mobileItems = isAdmin
+    ? adminMobileItems
+    : isPrivileged ? agentPrivilegedMobileItems : agentMobileItems
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -54,7 +64,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="flex">
         {/* Sidebar — hidden on mobile, visible tablet+ */}
         <aside className="hidden tablet:flex tablet:flex-col tablet:w-56 tablet:min-h-screen bg-white border-r border-gray-200 fixed top-0 left-0 z-30">
-          <AdminNav role={payload.role} companyName={companyName} />
+          <AdminNav role={payload.role} companyName={companyName} isPrivileged={isPrivileged} />
         </aside>
 
         {/* Main content */}

@@ -57,11 +57,22 @@ const adminNavItems: NavItem[] = [
   },
 ]
 
-export function AdminNav({ role, companyName }: { role: string; companyName?: string }) {
+const invoiceNavItem: NavItem = {
+  href: '/invoice',
+  label: 'Invoice',
+  icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+    </svg>
+  ),
+}
+
+export function AdminNav({ role, companyName, isPrivileged }: { role: string; companyName?: string; isPrivileged?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
 
   const agentItems = adminNavItems.filter(i => i.href === '/bookings' || i.href === '/import')
+  if (role === 'agent' && isPrivileged) agentItems.push(invoiceNavItem)
   const navItems = role === 'admin' ? adminNavItems : agentItems
 
   async function handleLogout() {
