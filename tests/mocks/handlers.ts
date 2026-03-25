@@ -8,6 +8,7 @@ import {
   mockSlots,
   mockSlotCapacity,
   mockRegistration,
+  mockResetToken,
 } from './db'
 
 const SUPA = 'https://mock-supabase.test/rest/v1'
@@ -124,6 +125,16 @@ export const handlers = [
 
   http.patch(`${SUPA}/truck_companies`, () => pgrstSingle(mockCompany)),
   http.delete(`${SUPA}/truck_companies`, () => new HttpResponse(null, { status: 204 })),
+
+  // ── password_reset_tokens ─────────────────────────────────────────────────
+  http.get(`${SUPA}/password_reset_tokens`, ({ request }) => {
+    if (isSingle(request)) return pgrstSingle(mockResetToken)
+    return HttpResponse.json([mockResetToken])
+  }),
+  http.post(`${SUPA}/password_reset_tokens`, async () =>
+    new HttpResponse(null, { status: 201 })
+  ),
+  http.patch(`${SUPA}/password_reset_tokens`, () => HttpResponse.json([])),
 
   // ── audit_logs ────────────────────────────────────────────────────────
   http.post(`${SUPA}/audit_logs`, async () => new HttpResponse(null, { status: 201 })),

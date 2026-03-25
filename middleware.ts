@@ -12,6 +12,8 @@ const ROUTE_ROLES: Array<{ pattern: RegExp; roles: UserRole[] }> = [
 
 const PUBLIC_ROUTES = [
   /^\/login$/,
+  /^\/forgot-password$/,
+  /^\/reset-password\//,
   /^\/register\/login$/,
   /^\/api\/auth\//,
   /^\/api\/register\/auth\//,

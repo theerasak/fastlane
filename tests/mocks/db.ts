@@ -136,6 +136,15 @@ export const mockSlotCapacity = mockSlots.map(s => ({
   remaining_capacity_non_privileged: s.capacity_non_privileged,
 }))
 
+export const mockResetToken = {
+  id: '00000000-0000-0000-0000-000000000099',
+  user_id: '00000000-0000-0000-0000-000000000001', // mockAdmin.id
+  token: 'a'.repeat(64),
+  expires_at: '2099-01-01T00:00:00Z',
+  used_at: null as string | null,
+  created_at: '2026-03-25T00:00:00Z',
+}
+
 export const mockRegistration = {
   id: '00000000-0000-0000-0000-000000000200',
   booking_id: mockBooking.id,

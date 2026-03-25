@@ -230,6 +230,133 @@ export async function cleanupCapacityNavData() {
   }
 }
 
+// ── Privileged Agent E2E fixture ────────────────────────────────────────────
+
+export const PRIV_AGENT_EMAIL = 'priv-agent@test.com'
+export const PRIV_AGENT_PASSWORD = 'testpass123'
+
+/**
+ * Seeds a privileged agent user for E2E invoice-summary tests.
+ * Also seeds two bookings linked to that agent for data verification.
+ */
+export async function seedPrivilegedAgentData() {
+  const supabase = await createTestSupabaseClient()
+  const hash = await bcrypt.hash(PRIV_AGENT_PASSWORD, 10)
+
+  // Upsert privileged agent
+  const { data: agent } = await supabase
+    .from('users')
+    .upsert(
+      { email: PRIV_AGENT_EMAIL, password_hash: hash, role: 'agent', is_privileged: true, is_active: true },
+      { onConflict: 'email' }
+    )
+    .select('id')
+    .single()
+
+  if (!agent) return null
+
+  // Ensure terminal and truck company exist
+  const { data: terminal } = await supabase
+    .from('port_terminals')
+    .upsert({ name: 'TEST-TERMINAL-A0', is_active: true }, { onConflict: 'name' })
+    .select()
+    .single()
+
+  const { data: company } = await supabase
+    .from('truck_companies')
+    .upsert(
+      { name: 'Priv Agent TC', contact_email: 'privtc@test.com', is_active: true },
+      { onConflict: 'contact_email' }
+    )
+    .select()
+    .single()
+
+  if (!terminal || !company) return null
+
+  // Seed two bookings created by the privileged agent
+  for (const row of [
+    { booking_number: 'INV-E2E-001', num_trucks: 2, fastlane_token: 'INV-TOKEN-001' },
+    { booking_number: 'INV-E2E-002', num_trucks: 3, fastlane_token: null },
+  ]) {
+    await supabase
+      .from('bookings')
+      .upsert(
+        {
+          ...row,
+          terminal_id: terminal.id,
+          truck_company_id: company.id,
+          is_privileged_booking: true,
+          status: 'FILLING-IN',
+          booking_date: '2099-12-31',
+          created_by: agent.id,
+        },
+        { onConflict: 'booking_number' }
+      )
+  }
+
+  return { agent, terminal, company }
+}
+
+export async function cleanupPrivilegedAgentData() {
+  const supabase = await createTestSupabaseClient()
+  const { data: bookings } = await supabase
+    .from('bookings')
+    .select('id')
+    .like('booking_number', 'INV-E2E-%')
+  if (bookings && bookings.length > 0) {
+    await supabase.from('bookings').delete().in('id', bookings.map(b => b.id))
+  }
+  await supabase.from('truck_companies').delete().eq('contact_email', 'privtc@test.com')
+  await supabase.from('users').delete().eq('email', PRIV_AGENT_EMAIL)
+}
+
+// ── Password Reset E2E fixture ───────────────────────────────────────────────
+
+export const RESET_E2E_EMAIL = 'reset-e2e@test.com'
+export const RESET_E2E_PASSWORD = 'testpass123'
+// 64-char hex-like tokens for the two E2E reset test scenarios
+export const RESET_E2E_TOKEN = '00000000000000000000000000000000000000000000000000000000000e2e01'
+export const RESET_FLOW_TOKEN = '00000000000000000000000000000000000000000000000000000000000e2e02'
+
+/**
+ * Seeds a test user and two reset tokens for E2E forgot-password tests.
+ * - RESET_E2E_TOKEN: valid token for page/validation tests (not consumed by tests)
+ * - RESET_FLOW_TOKEN: valid token for the full reset+login flow test
+ */
+export async function seedPasswordResetData() {
+  const supabase = await createTestSupabaseClient()
+  const hash = await bcrypt.hash(RESET_E2E_PASSWORD, 10)
+
+  const { data: user } = await supabase
+    .from('users')
+    .upsert(
+      { email: RESET_E2E_EMAIL, password_hash: hash, role: 'agent', is_active: true },
+      { onConflict: 'email' }
+    )
+    .select('id')
+    .single()
+
+  if (!user) return null
+
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+
+  // Remove any leftover tokens for this user from previous runs
+  await supabase.from('password_reset_tokens').delete().eq('user_id', user.id)
+
+  await supabase.from('password_reset_tokens').insert([
+    { user_id: user.id, token: RESET_E2E_TOKEN, expires_at: expiresAt },
+    { user_id: user.id, token: RESET_FLOW_TOKEN, expires_at: expiresAt },
+  ])
+
+  return { user }
+}
+
+export async function cleanupPasswordResetData() {
+  const supabase = await createTestSupabaseClient()
+  // Tokens cascade-delete when user is deleted
+  await supabase.from('users').delete().eq('email', RESET_E2E_EMAIL)
+}
+
 export async function cleanupTcTestData() {
   const supabase = await createTestSupabaseClient()
 

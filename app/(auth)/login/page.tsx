@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 function LoginForm() {
@@ -87,6 +88,12 @@ function LoginForm() {
       >
         {loading ? 'Signing in…' : 'Sign in'}
       </button>
+
+      <div className="text-center">
+        <Link href="/forgot-password" className="text-sm text-gray-500 hover:underline" data-testid="forgot-password-link">
+          Forgot password?
+        </Link>
+      </div>
     </form>
   )
 }
