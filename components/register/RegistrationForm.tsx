@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PlateInput } from './PlateInput'
 import { RegistrationSummary } from './RegistrationSummary'
 import { Button } from '@/components/ui/Button'
@@ -11,9 +11,10 @@ import type { BookingPublicInfo, RegistrationResponse, SlotAvailability } from '
 interface RegistrationFormProps {
   token: string
   initialData: BookingPublicInfo
+  onActiveCountChange?: (count: number) => void
 }
 
-export function RegistrationForm({ token, initialData }: RegistrationFormProps) {
+export function RegistrationForm({ token, initialData, onActiveCountChange }: RegistrationFormProps) {
   const [registrations, setRegistrations] = useState<RegistrationResponse[]>(initialData.registrations)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editPlate, setEditPlate] = useState('')
@@ -27,6 +28,10 @@ export function RegistrationForm({ token, initialData }: RegistrationFormProps) 
   const today = new Date().toISOString().split('T')[0]
 
   const active = registrations.filter(r => !r.is_deleted)
+
+  useEffect(() => {
+    onActiveCountChange?.(active.length)
+  }, [active.length])
   const isFull = active.length >= initialData.num_trucks
 
   // Returns true if we are within `bufferHours` of the slot start (i.e. locked)
@@ -48,6 +53,7 @@ export function RegistrationForm({ token, initialData }: RegistrationFormProps) 
       const json = await res.json()
       if (res.ok && json.data) {
         setSlotAvailability(json.data.slot_availability)
+        setRegistrations(json.data.registrations ?? [])
       }
     } catch {
       showToast('Failed to update date', 'error')
