@@ -49,7 +49,7 @@ export async function GET(
       containerNumber: reg.container_number,
     })
 
-    const filename = `fastlane-${booking.booking_number}-${reg.license_plate}.pdf`
+    const filename = `fastlane-${booking.booking_number}-${reg.license_plate}-${reg.container_number}.pdf`
       .replace(/[^a-zA-Z0-9\-_.]/g, '_')
 
     return new Response(pdfBuffer as unknown as BodyInit, {
