@@ -7,7 +7,7 @@ const ROUTE_ROLES: Array<{ pattern: RegExp; roles: UserRole[] }> = [
   { pattern: /^\/(users|terminals|truck-companies)/, roles: ['admin'] },
   { pattern: /^\/(bookings|import)/, roles: ['admin', 'agent'] },
   { pattern: /^\/invoice-summary/, roles: ['agent'] },
-  { pattern: /^\/capacity/, roles: ['supervisor'] },
+  { pattern: /^\/(capacity|daily-summary)/, roles: ['supervisor'] },
 ]
 
 const PUBLIC_ROUTES = [

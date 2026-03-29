@@ -9,6 +9,7 @@ import { AdminNav } from '@/components/layout/AdminNav'
 
 const supervisorMobileItems = [
   { href: '/capacity', label: 'Capacity' },
+  { href: '/daily-summary', label: 'Daily Summary' },
 ]
 
 export default async function SupervisorLayout({ children }: { children: React.ReactNode }) {
@@ -32,14 +33,20 @@ export default async function SupervisorLayout({ children }: { children: React.R
             <h1 className="text-lg font-bold text-gray-900">FMS</h1>
             <p className="text-xs text-gray-500 mt-0.5">Capacity Management</p>
           </div>
-          <div className="flex-1 p-3">
-            <Link href="/capacity" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-blue-700 bg-blue-50">
+          <nav className="flex-1 p-3 space-y-1">
+            <Link href="/capacity" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
               Capacity
             </Link>
-          </div>
+            <Link href="/daily-summary" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Daily Summary
+            </Link>
+          </nav>
           <div className="p-3 border-t border-gray-200">
             <form action="/api/auth/logout" method="POST">
               <button type="submit" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 w-full">
