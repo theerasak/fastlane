@@ -35,12 +35,15 @@ describe('daily-summary row mapping', () => {
     license_plate: string
     container_number: string
     registered_at: string
-    bookings: { booking_number: string; truck_companies: { name: string } | null } | null
+    bookings: { booking_number: string; booking_date: string; truck_companies: { name: string } | null } | null
   }
+
+  const FALLBACK_DATE = '2026-03-29'
 
   function mapRow(r: RawRow) {
     return {
       id: r.id,
+      booking_date: r.bookings?.booking_date ?? FALLBACK_DATE,
       hour_slot: r.hour_slot,
       license_plate: r.license_plate,
       container_number: r.container_number,
@@ -56,12 +59,13 @@ describe('daily-summary row mapping', () => {
     license_plate: 'AB-1234',
     container_number: 'ABCD1234567',
     registered_at: '2026-03-29T09:05:00Z',
-    bookings: { booking_number: 'BK-001', truck_companies: { name: 'Alpha Logistics' } },
+    bookings: { booking_number: 'BK-001', booking_date: '2026-03-29', truck_companies: { name: 'Alpha Logistics' } },
   }
 
-  it('maps all fields from raw row', () => {
+  it('maps all fields including booking_date', () => {
     const result = mapRow(raw)
     expect(result.id).toBe('row-1')
+    expect(result.booking_date).toBe('2026-03-29')
     expect(result.hour_slot).toBe(9)
     expect(result.license_plate).toBe('AB-1234')
     expect(result.container_number).toBe('ABCD1234567')
@@ -69,14 +73,18 @@ describe('daily-summary row mapping', () => {
     expect(result.truck_company_name).toBe('Alpha Logistics')
   })
 
-  it('uses em-dash fallback when bookings is null', () => {
+  it('uses fallback date when bookings is null', () => {
     const result = mapRow({ ...raw, bookings: null })
+    expect(result.booking_date).toBe(FALLBACK_DATE)
     expect(result.booking_number).toBe('—')
     expect(result.truck_company_name).toBe('—')
   })
 
   it('uses em-dash fallback when truck_companies is null', () => {
-    const result = mapRow({ ...raw, bookings: { booking_number: 'BK-002', truck_companies: null } })
+    const result = mapRow({
+      ...raw,
+      bookings: { booking_number: 'BK-002', booking_date: '2026-03-29', truck_companies: null },
+    })
     expect(result.booking_number).toBe('BK-002')
     expect(result.truck_company_name).toBe('—')
   })
@@ -85,32 +93,75 @@ describe('daily-summary row mapping', () => {
 // ── Sorting ─────────────────────────────────────────────────────────────────
 
 describe('daily-summary row sort order', () => {
-  type SortRow = { hour_slot: number; registered_at: string }
+  type SortRow = {
+    booking_date: string
+    hour_slot: number
+    container_number: string
+    license_plate: string
+  }
 
   const sort = (rows: SortRow[]) =>
     [...rows].sort((a, b) => {
+      const d = a.booking_date.localeCompare(b.booking_date)
+      if (d !== 0) return d
       if (a.hour_slot !== b.hour_slot) return a.hour_slot - b.hour_slot
-      return a.registered_at.localeCompare(b.registered_at)
+      const c = a.container_number.localeCompare(b.container_number)
+      if (c !== 0) return c
+      return a.license_plate.localeCompare(b.license_plate)
     })
 
-  it('sorts by hour_slot ascending', () => {
-    const rows: SortRow[] = [
-      { hour_slot: 14, registered_at: '2026-03-29T14:00:00Z' },
-      { hour_slot: 8,  registered_at: '2026-03-29T08:00:00Z' },
-      { hour_slot: 10, registered_at: '2026-03-29T10:00:00Z' },
+  const row = (booking_date: string, hour_slot: number, container_number: string, license_plate: string): SortRow =>
+    ({ booking_date, hour_slot, container_number, license_plate })
+
+  it('sorts by booking_date ascending', () => {
+    const rows = [
+      row('2026-04-01', 9, 'AAAA1111111', 'AA-0001'),
+      row('2026-03-29', 9, 'AAAA1111111', 'AA-0001'),
+      row('2026-03-30', 9, 'AAAA1111111', 'AA-0001'),
+    ]
+    expect(sort(rows).map(r => r.booking_date)).toEqual(['2026-03-29', '2026-03-30', '2026-04-01'])
+  })
+
+  it('sorts by hour_slot when booking_date is equal', () => {
+    const rows = [
+      row('2026-03-29', 14, 'AAAA1111111', 'AA-0001'),
+      row('2026-03-29', 8,  'AAAA1111111', 'AA-0001'),
+      row('2026-03-29', 10, 'AAAA1111111', 'AA-0001'),
     ]
     expect(sort(rows).map(r => r.hour_slot)).toEqual([8, 10, 14])
   })
 
-  it('sorts by registered_at when hour_slot is equal', () => {
-    const rows: SortRow[] = [
-      { hour_slot: 9, registered_at: '2026-03-29T09:30:00Z' },
-      { hour_slot: 9, registered_at: '2026-03-29T09:05:00Z' },
-      { hour_slot: 9, registered_at: '2026-03-29T09:15:00Z' },
+  it('sorts by container_number when date and hour are equal', () => {
+    const rows = [
+      row('2026-03-29', 9, 'ZZZZ9999999', 'AA-0001'),
+      row('2026-03-29', 9, 'AAAA1111111', 'AA-0001'),
+      row('2026-03-29', 9, 'MMMM5555555', 'AA-0001'),
+    ]
+    expect(sort(rows).map(r => r.container_number)).toEqual(['AAAA1111111', 'MMMM5555555', 'ZZZZ9999999'])
+  })
+
+  it('sorts by license_plate when date, hour and container are equal', () => {
+    const rows = [
+      row('2026-03-29', 9, 'AAAA1111111', 'ZZ-9999'),
+      row('2026-03-29', 9, 'AAAA1111111', 'AA-0001'),
+      row('2026-03-29', 9, 'AAAA1111111', 'MM-5555'),
+    ]
+    expect(sort(rows).map(r => r.license_plate)).toEqual(['AA-0001', 'MM-5555', 'ZZ-9999'])
+  })
+
+  it('applies all four sort keys together', () => {
+    const rows = [
+      row('2026-03-30', 9,  'AAAA1111111', 'AA-0001'),
+      row('2026-03-29', 10, 'AAAA1111111', 'AA-0001'),
+      row('2026-03-29', 9,  'ZZZZ9999999', 'AA-0001'),
+      row('2026-03-29', 9,  'AAAA1111111', 'ZZ-9999'),
+      row('2026-03-29', 9,  'AAAA1111111', 'AA-0001'),
     ]
     const result = sort(rows)
-    expect(result[0].registered_at).toBe('2026-03-29T09:05:00Z')
-    expect(result[1].registered_at).toBe('2026-03-29T09:15:00Z')
-    expect(result[2].registered_at).toBe('2026-03-29T09:30:00Z')
+    expect(result[0]).toMatchObject({ booking_date: '2026-03-29', hour_slot: 9,  container_number: 'AAAA1111111', license_plate: 'AA-0001' })
+    expect(result[1]).toMatchObject({ booking_date: '2026-03-29', hour_slot: 9,  container_number: 'AAAA1111111', license_plate: 'ZZ-9999' })
+    expect(result[2]).toMatchObject({ booking_date: '2026-03-29', hour_slot: 9,  container_number: 'ZZZZ9999999', license_plate: 'AA-0001' })
+    expect(result[3]).toMatchObject({ booking_date: '2026-03-29', hour_slot: 10, container_number: 'AAAA1111111', license_plate: 'AA-0001' })
+    expect(result[4]).toMatchObject({ booking_date: '2026-03-30', hour_slot: 9,  container_number: 'AAAA1111111', license_plate: 'AA-0001' })
   })
 })

@@ -110,21 +110,23 @@ function DailySummaryContent() {
           <table className="w-full text-sm" data-testid="summary-table">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Date</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Time</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Truck Company</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">License Plate</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Booking No.</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Container No.</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">License Plate</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Truck Company</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Booking No.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50" data-testid="summary-row">
+                  <td className="px-4 py-3 font-mono text-gray-900 whitespace-nowrap">{row.booking_date}</td>
                   <td className="px-4 py-3 font-mono text-gray-900 whitespace-nowrap">{formatHour(row.hour_slot)}</td>
-                  <td className="px-4 py-3 text-gray-900">{row.truck_company_name}</td>
-                  <td className="px-4 py-3 font-mono text-gray-900 whitespace-nowrap">{row.license_plate}</td>
-                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{row.booking_number}</td>
                   <td className="px-4 py-3 font-mono text-gray-700 whitespace-nowrap">{row.container_number}</td>
+                  <td className="px-4 py-3 font-mono text-gray-900 whitespace-nowrap">{row.license_plate}</td>
+                  <td className="px-4 py-3 text-gray-900">{row.truck_company_name}</td>
+                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{row.booking_number}</td>
                 </tr>
               ))}
             </tbody>

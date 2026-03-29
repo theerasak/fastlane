@@ -186,11 +186,12 @@ test.describe('Daily Summary — table content with seeded data', () => {
 
     const hasTable = await page.getByTestId('summary-table').isVisible().catch(() => false)
     if (hasTable) {
-      await expect(page.getByRole('columnheader', { name: /time/i })).toBeVisible()
-      await expect(page.getByRole('columnheader', { name: /truck company/i })).toBeVisible()
-      await expect(page.getByRole('columnheader', { name: /license plate/i })).toBeVisible()
-      await expect(page.getByRole('columnheader', { name: /booking/i })).toBeVisible()
+      await expect(page.getByRole('columnheader', { name: /^date$/i })).toBeVisible()
+      await expect(page.getByRole('columnheader', { name: /^time$/i })).toBeVisible()
       await expect(page.getByRole('columnheader', { name: /container/i })).toBeVisible()
+      await expect(page.getByRole('columnheader', { name: /license plate/i })).toBeVisible()
+      await expect(page.getByRole('columnheader', { name: /truck company/i })).toBeVisible()
+      await expect(page.getByRole('columnheader', { name: /booking/i })).toBeVisible()
     }
   })
 })

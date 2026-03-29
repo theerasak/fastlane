@@ -85,7 +85,7 @@ describe('GET /api/daily-summary — data', () => {
     expect(body.data).toEqual([])
   })
 
-  it('returns rows with the expected fields', async () => {
+  it('returns rows with the expected fields including booking_date', async () => {
     server.use(
       http.get(`${SUPA}/fastlane_registrations`, () => HttpResponse.json([mockSummaryRow]))
     )
@@ -94,11 +94,28 @@ describe('GET /api/daily-summary — data', () => {
     const { data } = await res.json()
     expect(data).toHaveLength(1)
     const row = data[0]
+    expect(row.booking_date).toBe(DATE)
     expect(row.hour_slot).toBe(mockRegistration.hour_slot)
     expect(row.license_plate).toBe(mockRegistration.license_plate)
     expect(row.container_number).toBe(mockRegistration.container_number)
     expect(row.booking_number).toBe(mockBooking.booking_number)
     expect(row.truck_company_name).toBe(mockCompany.name)
+  })
+
+  it('sorts by booking_date, hour_slot, container_number, license_plate', async () => {
+    const rows = [
+      { ...mockSummaryRow, id: 'r1', hour_slot: 10, container_number: 'ZZZZ9999999', license_plate: 'ZZ-9999' },
+      { ...mockSummaryRow, id: 'r2', hour_slot: 9,  container_number: 'MMMM5555555', license_plate: 'AA-0001' },
+      { ...mockSummaryRow, id: 'r3', hour_slot: 9,  container_number: 'AAAA1111111', license_plate: 'ZZ-9999' },
+      { ...mockSummaryRow, id: 'r4', hour_slot: 9,  container_number: 'AAAA1111111', license_plate: 'AA-0001' },
+    ]
+    server.use(
+      http.get(`${SUPA}/fastlane_registrations`, () => HttpResponse.json(rows))
+    )
+    const req = await createAuthRequest(`http://localhost/api/daily-summary?date=${DATE}`, { role: 'supervisor' })
+    const res = await getDailySummary(req)
+    const { data } = await res.json()
+    expect(data.map((r: { id: string }) => r.id)).toEqual(['r4', 'r3', 'r2', 'r1'])
   })
 
   it('uses em-dash fallback for missing truck company name', async () => {
