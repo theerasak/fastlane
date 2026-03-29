@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
 import { HOUR_LABELS } from '@/lib/constants'
 import type { SlotAvailability } from '@/types/api'
 
@@ -41,13 +40,7 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
 
-  // Build slot dropdown: only slots that have remaining capacity > 0
   const availableSlots = slotAvailability.filter(s => s.remaining_capacity > 0)
-
-  const slotOptions = availableSlots.map(s => ({
-    value: String(s.hour_slot),
-    label: `${HOUR_LABELS[s.hour_slot]} (${s.remaining_capacity} remaining)`,
-  }))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -73,14 +66,6 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
     return (
       <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
         No capacity slots have been configured for this date. Please contact the booking agent.
-      </p>
-    )
-  }
-
-  if (availableSlots.length === 0) {
-    return (
-      <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-        All time slots are full for this date. No more trucks can be registered.
       </p>
     )
   }
@@ -112,14 +97,20 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
       </div>
       <div className="flex gap-2">
         <div className="flex-1">
-          <Select
+          <select
             value={hourSlot}
             onChange={e => setHourSlot(e.target.value)}
-            options={slotOptions}
-            placeholder="Select time slot…"
             disabled={disabled || adding}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             data-testid="hour-slot-select"
-          />
+          >
+            <option value="">Select time slot…</option>
+            {slotAvailability.map(s => (
+              <option key={s.hour_slot} value={String(s.hour_slot)} disabled={s.remaining_capacity <= 0}>
+                {HOUR_LABELS[s.hour_slot]}{s.remaining_capacity <= 0 ? ' (full)' : ` (${s.remaining_capacity} remaining)`}
+              </option>
+            ))}
+          </select>
         </div>
         <Button
           type="submit"
@@ -130,6 +121,11 @@ export function PlateInput({ onAdd, disabled, slotAvailability }: PlateInputProp
           Add
         </Button>
       </div>
+      {availableSlots.length === 0 && slotAvailability.length > 0 && (
+        <p className="text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded-lg">
+          All time slots are full for this date.
+        </p>
+      )}
       {error && (
         <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
       )}
