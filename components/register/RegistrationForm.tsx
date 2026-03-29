@@ -200,6 +200,7 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
                           <span className="font-mono font-medium" data-testid={`plate-${idx}`}>{reg.license_plate}</span>
                           <span className="font-mono text-sm text-gray-600" data-testid={`container-${idx}`}>{reg.container_number}</span>
+                          <span className="text-xs text-gray-500">{new Date(reg.appointment_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                           <span className="text-xs text-gray-500">{HOUR_LABELS[reg.hour_slot]}</span>
                         </div>
                       </div>
