@@ -101,6 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .eq('booking_id', booking.id)
       .eq('is_deleted', false)
 
+    let docsFailed = false
     if ((newCount ?? 0) >= booking.num_trucks) {
       await supabase
         .from('bookings')
@@ -108,11 +109,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         .eq('id', booking.id)
         .eq('status', 'FILLING-IN')
 
-      // Await document generation so the client knows when docs are ready
-      await sendFastlaneDocuments(booking.id)
+      try {
+        await sendFastlaneDocuments(booking.id)
+      } catch {
+        docsFailed = true
+      }
     }
 
-    return NextResponse.json({ data }, { status: 201 })
+    return NextResponse.json({ data, ...(docsFailed && { docs_failed: true }) }, { status: 201 })
   } catch (err) {
     const { error, code, status } = handleApiError(err)
     return NextResponse.json({ error, code }, { status })

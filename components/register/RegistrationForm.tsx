@@ -79,8 +79,16 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
       setSlotAvailability(prev => prev.map(s =>
         s.hour_slot === hourSlot ? { ...s, remaining_capacity: s.remaining_capacity - 1 } : s
       ))
-      if (isLastRegistration) setDocsReady(true)
-      showToast('Registration added', 'success')
+      if (isLastRegistration) {
+        if (json.docs_failed) {
+          showToast('Registration added. Document generation failed — please contact your administrator.', 'error')
+        } else {
+          setDocsReady(true)
+          showToast('Registration added', 'success')
+        }
+      } else {
+        showToast('Registration added', 'success')
+      }
     } finally {
       if (isLastRegistration) setGeneratingDocs(false)
     }
