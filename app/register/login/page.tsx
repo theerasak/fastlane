@@ -27,7 +27,7 @@ function LoginForm() {
       })
       const json = await res.json()
       if (!res.ok) { setError(json.error || 'Login failed'); return }
-      router.push(nextUrl || '/')
+      router.push(nextUrl || '/register')
     } catch {
       setError('Connection error. Please try again.')
     } finally {

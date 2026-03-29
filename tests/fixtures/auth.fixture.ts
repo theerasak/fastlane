@@ -1,5 +1,5 @@
 import { test as base, Page } from '@playwright/test'
-import { TC_TEST_EMAIL, TC_TEST_PASSWORD, TC_TEST_TOKEN } from './db.fixture'
+import { TC_TEST_EMAIL, TC_TEST_PASSWORD, TC_TEST_TOKEN, PRIV_AGENT_EMAIL, PRIV_AGENT_PASSWORD } from './db.fixture'
 
 export type Role = 'admin' | 'agent' | 'supervisor'
 
@@ -54,6 +54,36 @@ export async function loginAsTc(
   // Now navigate to the token page with the session cookie set
   await page.goto(`/register/${TC_TEST_TOKEN}`)
   await page.waitForLoadState('networkidle')
+}
+
+/**
+ * Logs in as a truck company via the API and navigates to the /register dashboard.
+ */
+export async function loginAsTcDashboard(
+  page: Page,
+  email = TC_TEST_EMAIL,
+  password = TC_TEST_PASSWORD
+) {
+  const res = await page.request.post('/api/register/auth/login', {
+    data: { contact_email: email, password },
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!res.ok()) {
+    const body = await res.json()
+    throw new Error(`TC login failed (${res.status()}): ${body.error}`)
+  }
+  await page.goto('/register')
+  await page.waitForLoadState('networkidle')
+}
+
+/** Logs in as the privileged agent seeded by seedPrivilegedAgentData(). */
+export async function loginAsPrivilegedAgent(page: Page) {
+  await page.goto('/login')
+  await page.waitForLoadState('networkidle')
+  await page.getByTestId('email-input').fill(PRIV_AGENT_EMAIL)
+  await page.getByTestId('password-input').fill(PRIV_AGENT_PASSWORD)
+  await page.getByTestId('login-submit').click()
+  await page.waitForURL(/\/bookings/, { timeout: 15000 })
 }
 
 type Fixtures = {

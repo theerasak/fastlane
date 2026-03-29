@@ -39,8 +39,8 @@ export async function middleware(req: NextRequest) {
 
   if (isPublicRoute(pathname)) return NextResponse.next()
 
-  // TC-protected: /register/[token] pages and /api/register/[token]/* APIs
-  const isTcRoute = /^\/register\/[^/]/.test(pathname) || /^\/api\/register\/[^/]/.test(pathname)
+  // TC-protected: /register dashboard, /register/[token] pages and /api/register/[token]/* APIs
+  const isTcRoute = /^\/register(\/[^/]|$)/.test(pathname) || /^\/api\/register\/[^/]/.test(pathname)
   if (isTcRoute) {
     const tcToken = req.cookies.get(TC_COOKIE_NAME)?.value
     if (!tcToken) {

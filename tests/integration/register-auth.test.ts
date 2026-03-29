@@ -104,12 +104,14 @@ describe('POST /api/register/auth/login', () => {
 // ── POST /api/register/auth/logout ────────────────────────────────────────
 
 describe('POST /api/register/auth/logout', () => {
-  it('returns 200 and clears the TC session cookie', async () => {
-    const res = await logoutPost()
-    expect(res.status).toBe(200)
+  it('redirects to /register/login and clears the TC session cookie', async () => {
+    const req = createRequest('http://localhost/api/register/auth/logout', { method: 'POST' })
+    const res = await logoutPost(req)
 
-    const body = await res.json()
-    expect(body.ok).toBe(true)
+    // Logout now redirects (307) to /register/login
+    expect(res.status).toBeGreaterThanOrEqual(300)
+    expect(res.status).toBeLessThan(400)
+    expect(res.headers.get('location')).toMatch(/\/register\/login/)
 
     const setCookie = res.headers.get('set-cookie') ?? ''
     expect(setCookie).toContain(TC_COOKIE_NAME)
