@@ -89,10 +89,16 @@ function LoginForm() {
         {loading ? 'Signing in…' : 'Sign in'}
       </button>
 
-      <div className="text-center">
+      <div className="text-center space-y-1">
         <Link href="/forgot-password" className="text-sm text-gray-500 hover:underline" data-testid="forgot-password-link">
           Forgot password?
         </Link>
+        <p className="text-sm text-gray-500">
+          Truck company?{' '}
+          <Link href="/register/login" className="text-blue-600 hover:underline">
+            Sign in here
+          </Link>
+        </p>
       </div>
     </form>
   )
