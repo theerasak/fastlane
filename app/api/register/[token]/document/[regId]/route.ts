@@ -40,6 +40,7 @@ export async function GET(
     const truckCompanyName = (booking.truck_companies as unknown as { name: string } | null)?.name ?? tcSession.name
 
     const pdfBuffer = await generateFastlaneDocument({
+      token,
       bookingNumber: booking.booking_number,
       terminalName,
       truckCompanyName,

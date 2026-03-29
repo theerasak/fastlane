@@ -24,7 +24,7 @@ export async function sendFastlaneDocuments(bookingId: string): Promise<void> {
 
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, booking_number, terminal_id, port_terminals(name), truck_companies(name, contact_email)')
+    .select('id, booking_number, terminal_id, fastlane_token, port_terminals(name), truck_companies(name, contact_email)')
     .eq('id', bookingId)
     .single()
 
@@ -50,6 +50,7 @@ export async function sendFastlaneDocuments(bookingId: string): Promise<void> {
     regs.map(async (reg) => {
       const appointmentDate = (reg as unknown as { appointment_date: string }).appointment_date
       const pdfBuffer = await generateFastlaneDocument({
+        token: (booking as unknown as { fastlane_token: string }).fastlane_token ?? '',
         bookingNumber: booking.booking_number,
         terminalName,
         truckCompanyName,

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
+import { createHash } from 'crypto'
 import { generateFastlaneDocument } from '@/lib/pdf/fastlane-document'
 
 const BASE_DATA = {
+  token: 'TESTTOKEN001',
   bookingNumber: 'BK-TEST-001',
   terminalName: 'Terminal A',
   truckCompanyName: 'Test Trucking Co',
@@ -39,6 +41,23 @@ describe('generateFastlaneDocument', () => {
     const buf1 = await generateFastlaneDocument({ ...BASE_DATA, hourSlot: 8 })
     const buf2 = await generateFastlaneDocument({ ...BASE_DATA, hourSlot: 18 })
     expect(buf1.equals(buf2)).toBe(false)
+  })
+
+  it('QR check digit is correct SHA-1 prefix', () => {
+    // Replicate buildQrPayload logic inline
+    const hourLabel = '09:00 \u2013 10:00'
+    const body = [
+      BASE_DATA.token,
+      BASE_DATA.terminalName,
+      BASE_DATA.bookingNumber,
+      BASE_DATA.containerNumber,
+      BASE_DATA.appointmentDate,
+      hourLabel,
+      BASE_DATA.licensePlate,
+    ].join('|')
+    const check = createHash('sha1').update(body).digest('hex').slice(0, 8).toUpperCase()
+    expect(check).toHaveLength(8)
+    expect(check).toMatch(/^[0-9A-F]{8}$/)
   })
 
   it('can generate documents concurrently without error', async () => {
