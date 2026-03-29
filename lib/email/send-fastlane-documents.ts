@@ -66,19 +66,25 @@ export async function sendFastlaneDocuments(bookingId: string): Promise<void> {
   )
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER
-  await transporter.sendMail({
-    from,
-    to: toEmail,
-    subject: `Fastlane Entry Documents — ${booking.booking_number}`,
-    text: [
-      `Dear ${truckCompanyName},`,
-      '',
-      `Please find attached your fastlane entry documents for booking ${booking.booking_number} at ${terminalName}.`,
-      '',
-      `${attachments.length} document(s) attached — one per registered truck.`,
-      '',
-      'Please present the relevant document at the terminal gate on your appointment date.',
-    ].join('\n'),
-    attachments,
-  })
+  try {
+    await transporter.sendMail({
+      from,
+      to: toEmail,
+      subject: `Fastlane Entry Documents — ${booking.booking_number}`,
+      text: [
+        `Dear ${truckCompanyName},`,
+        '',
+        `Please find attached your fastlane entry documents for booking ${booking.booking_number} at ${terminalName}.`,
+        '',
+        `${attachments.length} document(s) attached — one per registered truck.`,
+        '',
+        'Please present the relevant document at the terminal gate on your appointment date.',
+      ].join('\n'),
+      attachments,
+    })
+  } catch (err) {
+    // Email delivery failed (e.g. suppressed recipient, SMTP error).
+    // PDFs are still available for download via the website — do not rethrow.
+    console.error(`[sendFastlaneDocuments] Email delivery failed for booking ${booking.booking_number}:`, err)
+  }
 }

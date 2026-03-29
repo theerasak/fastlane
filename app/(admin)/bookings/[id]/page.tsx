@@ -186,7 +186,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
       const res = await fetch(`/api/bookings/${id}/send-documents`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) { showToast(json.error || 'Failed to send documents', 'error'); return }
-      showToast('Documents sent to truck company email', 'success')
+      showToast('Documents regenerated. Email sent if delivery was possible.', 'success')
     } catch { showToast('Network error', 'error') }
     finally { setSendingDocs(false) }
   }
