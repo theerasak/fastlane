@@ -80,6 +80,7 @@ CREATE TABLE bookings (
 CREATE TABLE fastlane_registrations (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   booking_id       UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  appointment_date DATE NOT NULL DEFAULT CURRENT_DATE,
   hour_slot        SMALLINT NOT NULL CHECK (hour_slot >= 0 AND hour_slot <= 23),
   terminal_id      UUID NOT NULL REFERENCES port_terminals(id),
   license_plate    TEXT NOT NULL,
@@ -117,6 +118,7 @@ CREATE INDEX idx_bookings_terminal ON bookings (terminal_id);
 CREATE INDEX idx_bookings_token ON bookings (fastlane_token) WHERE fastlane_token IS NOT NULL;
 CREATE INDEX idx_registrations_booking ON fastlane_registrations (booking_id);
 CREATE INDEX idx_registrations_terminal_slot ON fastlane_registrations (terminal_id, hour_slot);
+CREATE INDEX idx_registrations_appointment_date ON fastlane_registrations (appointment_date);
 
 -- ============================================================
 -- Views
@@ -151,10 +153,9 @@ FROM terminal_capacity tc
 LEFT JOIN fastlane_registrations fr
   ON fr.terminal_id = tc.terminal_id
   AND fr.hour_slot = tc.hour_slot
+  AND fr.appointment_date = tc.date
 LEFT JOIN bookings b
   ON b.id = fr.booking_id
-  AND b.terminal_id = tc.terminal_id
-  AND b.booking_date = tc.date
 GROUP BY tc.terminal_id, tc.date, tc.hour_slot, tc.capacity_privileged, tc.capacity_non_privileged, tc.last_updated_at;
 
 -- ============================================================

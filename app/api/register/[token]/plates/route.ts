@@ -76,17 +76,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       throw new ApiError('No remaining capacity in this slot', 409, 'SLOT_FULL')
     }
 
-    // Insert registration
+    // Insert registration — store appointment_date independently so it is
+    // not affected if the booking's booking_date is later changed.
     const { data, error } = await supabase
       .from('fastlane_registrations')
       .insert({
         booking_id: booking.id,
+        appointment_date: bookingDate,
         hour_slot,
         terminal_id: booking.terminal_id,
         license_plate,
         container_number,
       })
-      .select('id, booking_id, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
+      .select('id, booking_id, appointment_date, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
       .single()
 
     if (error) throw ApiError.internal(error.message)
@@ -133,12 +135,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
     if (!parsed.success) throw ApiError.badRequest(parsed.error.issues[0]?.message)
 
     const supabase = getServerClient()
-    const bookingDate = (booking as unknown as { booking_date: string }).booking_date
 
-    // Fetch current registration to get current hour_slot
+    // Fetch current registration — use its own appointment_date (independent of booking_date)
     const { data: currentReg, error: regError } = await supabase
       .from('fastlane_registrations')
-      .select('id, hour_slot, license_plate, container_number')
+      .select('id, appointment_date, hour_slot, license_plate, container_number')
       .eq('id', registrationId)
       .eq('booking_id', booking.id)
       .eq('is_deleted', false)
@@ -146,6 +147,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
 
     if (regError || !currentReg) throw ApiError.notFound('Registration not found')
 
+    const appointmentDate = (currentReg as unknown as { appointment_date: string }).appointment_date
     const newHourSlot = parsed.data.hour_slot
     const newLicensePlate = parsed.data.license_plate
     const newContainerNumber = parsed.data.container_number
@@ -153,17 +155,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
     const updateFields: Record<string, unknown> = {}
 
     if (newHourSlot !== undefined && newHourSlot !== currentReg.hour_slot) {
-      // Changing slot: must be >12h before the new slot
-      if (!isWithinDeadline(bookingDate, newHourSlot, 12)) {
+      // Changing slot: must be >12h before the new slot on the registration's appointment_date
+      if (!isWithinDeadline(appointmentDate, newHourSlot, 12)) {
         throw new ApiError('Cannot change slot: new slot time must be more than 12 hours in advance', 409, 'DEADLINE_PASSED')
       }
 
-      // Check capacity for new slot
+      // Check capacity for new slot on the registration's appointment_date
       const { data: slotData, error: slotError } = await supabase
         .from('slot_remaining_capacity')
         .select('remaining_capacity_privileged, remaining_capacity_non_privileged')
         .eq('terminal_id', booking.terminal_id)
-        .eq('date', bookingDate)
+        .eq('date', appointmentDate)
         .eq('hour_slot', newHourSlot)
         .single()
 
@@ -182,17 +184,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       updateFields.hour_slot = newHourSlot
     }
 
-    // Container number: locked 12h before slot
+    // Container number: locked 12h before slot (using registration's own appointment_date)
     if (newContainerNumber !== undefined) {
-      if (!isWithinDeadline(bookingDate, currentReg.hour_slot, 12)) {
+      if (!isWithinDeadline(appointmentDate, currentReg.hour_slot, 12)) {
         throw new ApiError('Cannot change container number: less than 12 hours before slot time', 409, 'DEADLINE_PASSED')
       }
       updateFields.container_number = newContainerNumber
     }
 
-    // License plate: locked 1h before slot
+    // License plate: locked 1h before slot (using registration's own appointment_date)
     if (newLicensePlate !== undefined) {
-      if (!isWithinDeadline(bookingDate, currentReg.hour_slot, 1)) {
+      if (!isWithinDeadline(appointmentDate, currentReg.hour_slot, 1)) {
         throw new ApiError('Cannot change plate: slot time must be more than 1 hour in advance', 409, 'DEADLINE_PASSED')
       }
       updateFields.license_plate = newLicensePlate
@@ -208,7 +210,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       .eq('id', registrationId)
       .eq('booking_id', booking.id)
       .eq('is_deleted', false)
-      .select('id, booking_id, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
+      .select('id, booking_id, appointment_date, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
       .single()
 
     if (error || !data) throw ApiError.notFound('Registration not found')

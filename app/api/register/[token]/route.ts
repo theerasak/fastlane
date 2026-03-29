@@ -63,7 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     const [{ data: registrations }, { data: slots }] = await Promise.all([
       supabase
         .from('fastlane_registrations')
-        .select('id, booking_id, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
+        .select('id, booking_id, appointment_date, hour_slot, terminal_id, license_plate, container_number, is_deleted, registered_at, deleted_at')
         .eq('booking_id', booking.id)
         .eq('is_deleted', false)
         .order('registered_at'),

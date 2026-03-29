@@ -173,6 +173,7 @@ export interface CapacityConflictResponse {
 export interface RegistrationResponse {
   id: string
   booking_id: string
+  appointment_date: string
   hour_slot: number
   terminal_id: string
   license_plate: string

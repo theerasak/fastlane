@@ -29,19 +29,19 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('fastlane_registrations')
       .select(`
-        id, hour_slot, license_plate, container_number, registered_at,
-        bookings!inner(booking_number, booking_date, truck_companies!inner(name))
+        id, appointment_date, hour_slot, license_plate, container_number, registered_at,
+        bookings!inner(booking_number, truck_companies!inner(name))
       `)
       .eq('is_deleted', false)
-      .eq('bookings.booking_date', date)
+      .eq('appointment_date', date)
 
     if (error) throw ApiError.internal(error.message)
 
     const rows: DailySummaryRow[] = (data ?? []).map((r: Record<string, unknown>) => {
-      const booking = r.bookings as { booking_number: string; booking_date: string; truck_companies: { name: string } | null } | null
+      const booking = r.bookings as { booking_number: string; truck_companies: { name: string } | null } | null
       return {
         id: r.id as string,
-        booking_date: booking?.booking_date ?? date,
+        booking_date: r.appointment_date as string,
         hour_slot: r.hour_slot as number,
         license_plate: r.license_plate as string,
         container_number: r.container_number as string,

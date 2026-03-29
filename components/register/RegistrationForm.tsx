@@ -35,8 +35,8 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
   const isFull = active.length >= initialData.num_trucks
 
   // Returns true if we are within `bufferHours` of the slot start (i.e. locked)
-  function isLocked(hourSlot: number, bufferHours: number): boolean {
-    const slotMs = new Date(`${bookingDate}T${String(hourSlot).padStart(2, '0')}:00:00Z`).getTime()
+  function isLocked(appointmentDate: string, hourSlot: number, bufferHours: number): boolean {
+    const slotMs = new Date(`${appointmentDate}T${String(hourSlot).padStart(2, '0')}:00:00Z`).getTime()
     return Date.now() >= slotMs - bufferHours * 3600 * 1000
   }
 
@@ -138,8 +138,8 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
           <h3 className="font-semibold text-gray-900">Registered Trucks</h3>
           <div className="space-y-2">
             {active.map((reg, idx) => {
-              const containerLocked = isLocked(reg.hour_slot, 12)
-              const plateLocked = isLocked(reg.hour_slot, 1)
+              const containerLocked = isLocked(reg.appointment_date, reg.hour_slot, 12)
+              const plateLocked = isLocked(reg.appointment_date, reg.hour_slot, 1)
               return (
                 <div key={reg.id} className="p-3 bg-gray-50 rounded-lg" data-testid={`registration-${idx}`}>
                   {editingId === reg.id ? (
