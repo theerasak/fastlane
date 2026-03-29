@@ -272,11 +272,11 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
               <p className="text-xs text-gray-500 uppercase tracking-wide">Created</p>
               <p className="font-medium">{new Date(booking.created_at).toLocaleString()}</p>
             </div>
-            {booking.fastlane_token && !booking.token_cancelled && booking.token_expires_at && (
+            {booking.fastlane_token && !booking.token_cancelled && (
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Link Expires</p>
                 <p className="font-medium" data-testid="booking-link-expiry">
-                  {new Date(booking.token_expires_at).toLocaleDateString()}
+                  {booking.token_expires_at ? new Date(booking.token_expires_at).toLocaleDateString() : '—'}
                 </p>
               </div>
             )}
