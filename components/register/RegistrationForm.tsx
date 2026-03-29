@@ -205,6 +205,15 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
+                        <a
+                          href={`/api/register/${token}/document/${reg.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-blue-700 hover:bg-blue-50 border border-blue-200"
+                          data-testid={`download-pdf-btn-${idx}`}
+                        >
+                          PDF
+                        </a>
                         <Button
                           size="sm"
                           variant="ghost"

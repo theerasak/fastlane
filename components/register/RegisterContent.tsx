@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { RegistrationForm } from './RegistrationForm'
 import { StatusBadge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { showToast } from '@/components/ui/Toast'
 import type { BookingPublicInfo } from '@/types/api'
 
 interface RegisterContentProps {
@@ -12,6 +14,23 @@ interface RegisterContentProps {
 
 export function RegisterContent({ token, booking }: RegisterContentProps) {
   const [activeCount, setActiveCount] = useState(booking.active_count)
+  const [sending, setSending] = useState(false)
+
+  const isFull = activeCount >= booking.num_trucks
+
+  async function handleSendDocuments() {
+    setSending(true)
+    try {
+      const res = await fetch(`/api/register/${token}/send-documents`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) { showToast(json.error || 'Failed to send documents', 'error'); return }
+      showToast(`Documents sent to ${json.sent_to}`, 'success')
+    } catch {
+      showToast('Network error', 'error')
+    } finally {
+      setSending(false)
+    }
+  }
 
   return (
     <>
@@ -46,6 +65,22 @@ export function RegisterContent({ token, booking }: RegisterContentProps) {
             </div>
           )}
         </div>
+
+        {isFull && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <Button
+              onClick={handleSendDocuments}
+              loading={sending}
+              className="w-full"
+              data-testid="send-documents-btn"
+            >
+              Email Fastlane Documents
+            </Button>
+            <p className="text-xs text-gray-400 text-center mt-2">
+              Sends one PDF entry pass per truck to your company email.
+            </p>
+          </div>
+        )}
       </div>
 
       <RegistrationForm token={token} initialData={booking} onActiveCountChange={setActiveCount} />
