@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
-import { handleApiError } from '@/lib/api/errors'
 import { getTcSession } from '@/lib/auth/tc-session'
 
 export async function GET(req: NextRequest) {
@@ -23,6 +22,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(data ?? [])
   } catch (err) {
-    return handleApiError(err)
+    console.error('GET /api/register/bookings error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
