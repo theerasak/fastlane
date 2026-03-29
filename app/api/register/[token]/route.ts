@@ -38,8 +38,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     const { data: booking, error } = await supabase
       .from('bookings')
       .select(`
-        id, booking_number, num_trucks, status, token_cancelled, terminal_id, booking_date,
-        is_privileged_booking, truck_company_id, port_terminals(name)
+        id, booking_number, num_trucks, status, token_cancelled, token_expires_at,
+        terminal_id, booking_date, is_privileged_booking, truck_company_id, port_terminals(name)
       `)
       .eq('fastlane_token', token)
       .single()
@@ -47,6 +47,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     if (error || !booking) throw ApiError.notFound('Invalid or expired token')
 
     if (booking.truck_company_id !== tcSession.truck_company_id) throw ApiError.forbidden()
+
+    // Check token expiry
+    const expiresAt = (booking as unknown as { token_expires_at: string | null }).token_expires_at
+    if (expiresAt && new Date(expiresAt) < new Date()) {
+      throw new ApiError('This registration link has expired.', 410, 'TOKEN_EXPIRED')
+    }
 
     const bookingDate = (booking as unknown as { booking_date: string }).booking_date
 

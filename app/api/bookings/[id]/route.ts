@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .from('bookings')
       .select(`
         id, booking_number, terminal_id, truck_company_id, num_trucks,
-        fastlane_token, token_cancelled, status, created_at, booked_at, closed_at,
+        fastlane_token, token_cancelled, token_expires_at, status, created_at, booked_at, closed_at,
         is_privileged_booking, booking_date,
         port_terminals(name),
         truck_companies(name)
@@ -63,6 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         created_by: createdBy,
         is_privileged_booking: (data as unknown as { is_privileged_booking: boolean }).is_privileged_booking,
         booking_date: (data as unknown as { booking_date: string }).booking_date,
+        token_expires_at: (data as unknown as { token_expires_at: string | null }).token_expires_at ?? null,
         port_terminals: undefined,
         truck_companies: undefined,
       }

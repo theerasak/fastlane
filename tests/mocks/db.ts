@@ -102,6 +102,7 @@ export const mockBooking = {
   num_trucks: 2,
   fastlane_token: 'TESTTOKEN001',
   token_cancelled: false,
+  token_expires_at: '2099-01-01T00:00:00Z' as string | null,
   is_privileged_booking: false,
   status: 'FILLING-IN' as const,
   booking_date: BOOKING_DATE,

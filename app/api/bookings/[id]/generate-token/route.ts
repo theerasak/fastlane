@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth/session'
 import { handleApiError, ApiError } from '@/lib/api/errors'
 import { generateUniqueToken } from '@/lib/lcg/token'
 
+const TOKEN_TTL_DAYS = 60
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession(req)
@@ -21,6 +23,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (fetchError || !booking) throw ApiError.notFound('Booking not found')
 
+    // Block regeneration if any active registrations exist
+    const { data: fillData } = await supabase
+      .from('booking_fill_stats')
+      .select('active_count')
+      .eq('booking_id', id)
+      .single()
+
+    if ((fillData?.active_count ?? 0) > 0) {
+      throw ApiError.badRequest('Cannot regenerate: the link has already been partially used.')
+    }
+
     // Generate a unique token
     const token = await generateUniqueToken(id, async (candidate) => {
       const { data } = await supabase
@@ -31,12 +44,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return !data
     })
 
-    // Update booking with token, reset cancelled flag
+    const expiresAt = new Date(Date.now() + TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+
+    // Update booking with token, expiry, reset cancelled flag
     const { data, error } = await supabase
       .from('bookings')
-      .update({ fastlane_token: token, token_cancelled: false })
+      .update({ fastlane_token: token, token_cancelled: false, token_expires_at: expiresAt })
       .eq('id', id)
-      .select('id, fastlane_token, token_cancelled')
+      .select('id, fastlane_token, token_cancelled, token_expires_at')
       .single()
 
     if (error || !data) throw ApiError.internal('Failed to save token')

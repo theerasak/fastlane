@@ -67,6 +67,7 @@ CREATE TABLE bookings (
   num_trucks           SMALLINT NOT NULL DEFAULT 1,
   fastlane_token       TEXT UNIQUE,
   token_cancelled      BOOLEAN NOT NULL DEFAULT FALSE,
+  token_expires_at     TIMESTAMPTZ,
   is_privileged_booking BOOLEAN NOT NULL DEFAULT FALSE,
   status               booking_status NOT NULL DEFAULT 'FILLING-IN',
   booking_date         DATE NOT NULL DEFAULT CURRENT_DATE,

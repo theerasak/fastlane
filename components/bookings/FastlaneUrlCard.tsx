@@ -7,17 +7,29 @@ import { showToast } from '@/components/ui/Toast'
 interface FastlaneUrlCardProps {
   token: string | null
   tokenCancelled: boolean
+  tokenExpiresAt: string | null
   bookingId: string
-  onTokenGenerated: (token: string) => void
+  hasRegistrations: boolean
+  onTokenGenerated: (token: string, expiresAt: string) => void
   onCancelled: () => void
 }
 
-export function FastlaneUrlCard({ token, tokenCancelled, bookingId, onTokenGenerated, onCancelled }: FastlaneUrlCardProps) {
+export function FastlaneUrlCard({
+  token,
+  tokenCancelled,
+  tokenExpiresAt,
+  bookingId,
+  hasRegistrations,
+  onTokenGenerated,
+  onCancelled,
+}: FastlaneUrlCardProps) {
   const [generating, setGenerating] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
   const registrationUrl = token ? `${appUrl}/register/${token}` : null
+
+  const isExpired = tokenExpiresAt ? new Date(tokenExpiresAt) < new Date() : false
 
   async function handleGenerate() {
     setGenerating(true)
@@ -25,7 +37,7 @@ export function FastlaneUrlCard({ token, tokenCancelled, bookingId, onTokenGener
       const res = await fetch(`/api/bookings/${bookingId}/generate-token`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) { showToast(json.error || 'Failed to generate token', 'error'); return }
-      onTokenGenerated(json.data.fastlane_token)
+      onTokenGenerated(json.data.fastlane_token, json.data.token_expires_at)
       showToast('Token generated successfully', 'success')
     } catch { showToast('Network error', 'error') }
     finally { setGenerating(false) }
@@ -67,10 +79,30 @@ export function FastlaneUrlCard({ token, tokenCancelled, bookingId, onTokenGener
             </code>
             <Button variant="secondary" size="sm" onClick={handleCopy}>Copy</Button>
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={handleGenerate} loading={generating}>
-              Regenerate
-            </Button>
+
+          {/* Expiry info */}
+          {tokenExpiresAt && (
+            isExpired ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700" data-testid="expiry-expired">
+                This link expired on {new Date(tokenExpiresAt).toLocaleDateString()}.
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500" data-testid="expiry-date">
+                Expires on {new Date(tokenExpiresAt).toLocaleDateString()}
+              </p>
+            )
+          )}
+
+          <div className="flex gap-2 flex-wrap">
+            {hasRegistrations ? (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 w-full" data-testid="regen-blocked-msg">
+                Cannot regenerate — this link has already been partially used.
+              </p>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={handleGenerate} loading={generating} data-testid="regenerate-btn">
+                Regenerate
+              </Button>
+            )}
             <Button variant="danger" size="sm" onClick={handleCancel} loading={cancelling} data-testid="cancel-token-btn">
               Cancel URL
             </Button>
