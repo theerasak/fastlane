@@ -132,7 +132,7 @@ export default async function RegisterPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-xl mx-auto">
+      <div className="max-w-[43rem] mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Fastlane Registration</h1>
           <p className="text-gray-500 text-sm mt-1">{booking.terminal_name}</p>
