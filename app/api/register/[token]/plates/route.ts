@@ -3,6 +3,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { handleApiError, ApiError } from '@/lib/api/errors'
 import { AddPlateSchema, EditRegistrationSchema } from '@/lib/validations/register'
 import { getTcSession } from '@/lib/auth/tc-session'
+import { sendFastlaneDocuments } from '@/lib/email/send-fastlane-documents'
 
 function isWithinDeadline(bookingDate: string, hourSlot: number, bufferHours: number): boolean {
   // slot starts at hourSlot:00 UTC on bookingDate
@@ -106,6 +107,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         .update({ status: 'BOOKED', booked_at: new Date().toISOString() })
         .eq('id', booking.id)
         .eq('status', 'FILLING-IN')
+
+      // Auto-send entry documents — fire and forget (errors are non-fatal)
+      sendFastlaneDocuments(booking.id).catch(() => {})
     }
 
     return NextResponse.json({ data }, { status: 201 })
