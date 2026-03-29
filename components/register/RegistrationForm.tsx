@@ -24,6 +24,8 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
   const [bookingDate, setBookingDate] = useState(initialData.booking_date)
   const [slotAvailability, setSlotAvailability] = useState<SlotAvailability[]>(initialData.slot_availability)
   const [dateChanging, setDateChanging] = useState(false)
+  const [generatingDocs, setGeneratingDocs] = useState(false)
+  const [docsReady, setDocsReady] = useState(initialData.active_count >= initialData.num_trucks)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -63,18 +65,25 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
   }
 
   async function handleAdd(licensePlate: string, containerNumber: string, hourSlot: number) {
-    const res = await fetch(`/api/register/${token}/plates`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ license_plate: licensePlate, container_number: containerNumber, hour_slot: hourSlot }),
-    })
-    const json = await res.json()
-    if (!res.ok) throw new Error(json.error || 'Failed to add registration')
-    setRegistrations(prev => [...prev, json.data])
-    setSlotAvailability(prev => prev.map(s =>
-      s.hour_slot === hourSlot ? { ...s, remaining_capacity: s.remaining_capacity - 1 } : s
-    ))
-    showToast('Registration added', 'success')
+    const isLastRegistration = active.length + 1 >= initialData.num_trucks
+    if (isLastRegistration) setGeneratingDocs(true)
+    try {
+      const res = await fetch(`/api/register/${token}/plates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ license_plate: licensePlate, container_number: containerNumber, hour_slot: hourSlot }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to add registration')
+      setRegistrations(prev => [...prev, json.data])
+      setSlotAvailability(prev => prev.map(s =>
+        s.hour_slot === hourSlot ? { ...s, remaining_capacity: s.remaining_capacity - 1 } : s
+      ))
+      if (isLastRegistration) setDocsReady(true)
+      showToast('Registration added', 'success')
+    } finally {
+      if (isLastRegistration) setGeneratingDocs(false)
+    }
   }
 
   async function handleDelete(id: string) {
@@ -130,6 +139,16 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
         <div className="card">
           <h3 className="font-semibold text-gray-900 mb-3">Add Truck</h3>
           <PlateInput onAdd={handleAdd} disabled={isFull} slotAvailability={slotAvailability} />
+        </div>
+      )}
+
+      {generatingDocs && (
+        <div className="card flex items-center gap-3 text-sm text-blue-700 bg-blue-50 border border-blue-200">
+          <svg className="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+          Generating documents and sending to your email…
         </div>
       )}
 
@@ -205,15 +224,17 @@ export function RegistrationForm({ token, initialData, onActiveCountChange }: Re
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <a
-                          href={`/api/register/${token}/document/${reg.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-blue-700 hover:bg-blue-50 border border-blue-200"
-                          data-testid={`download-pdf-btn-${idx}`}
-                        >
-                          PDF
-                        </a>
+                        {docsReady && (
+                          <a
+                            href={`/api/register/${token}/document/${reg.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-blue-700 hover:bg-blue-50 border border-blue-200"
+                            data-testid={`download-pdf-btn-${idx}`}
+                          >
+                            PDF
+                          </a>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"

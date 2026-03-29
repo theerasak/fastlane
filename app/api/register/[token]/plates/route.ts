@@ -108,8 +108,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         .eq('id', booking.id)
         .eq('status', 'FILLING-IN')
 
-      // Auto-send entry documents — fire and forget (errors are non-fatal)
-      sendFastlaneDocuments(booking.id).catch(() => {})
+      // Await document generation so the client knows when docs are ready
+      await sendFastlaneDocuments(booking.id)
     }
 
     return NextResponse.json({ data }, { status: 201 })
