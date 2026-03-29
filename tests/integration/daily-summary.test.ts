@@ -11,9 +11,9 @@ const DATE = '2026-03-29'
 /** A registration row with embedded bookings + truck_companies as Supabase returns. */
 const mockSummaryRow = {
   ...mockRegistration,
+  appointment_date: DATE,
   bookings: {
     booking_number: mockBooking.booking_number,
-    booking_date: DATE,
     truck_companies: { name: mockCompany.name },
   },
 }
@@ -85,7 +85,7 @@ describe('GET /api/daily-summary — data', () => {
     expect(body.data).toEqual([])
   })
 
-  it('returns rows with the expected fields including booking_date', async () => {
+  it('returns rows with the expected fields including booking_date (mapped from appointment_date)', async () => {
     server.use(
       http.get(`${SUPA}/fastlane_registrations`, () => HttpResponse.json([mockSummaryRow]))
     )
@@ -102,7 +102,7 @@ describe('GET /api/daily-summary — data', () => {
     expect(row.truck_company_name).toBe(mockCompany.name)
   })
 
-  it('sorts by booking_date, hour_slot, container_number, license_plate', async () => {
+  it('sorts by appointment_date, hour_slot, container_number, license_plate', async () => {
     const rows = [
       { ...mockSummaryRow, id: 'r1', hour_slot: 10, container_number: 'ZZZZ9999999', license_plate: 'ZZ-9999' },
       { ...mockSummaryRow, id: 'r2', hour_slot: 9,  container_number: 'MMMM5555555', license_plate: 'AA-0001' },

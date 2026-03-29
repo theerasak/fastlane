@@ -161,13 +161,13 @@ describe('POST /api/register/[token]/plates', () => {
 
 describe('PATCH /api/register/[token]/plates', () => {
   it('edits a plate and returns 200', async () => {
-    // Use future booking_date so 1h deadline check passes
+    // Use future appointment_date on registration so 1h deadline check passes
     server.use(
       http.get('https://mock-supabase.test/rest/v1/bookings', () =>
         pgrstSingle({ ...mockBooking, booking_date: FUTURE_BOOKING_DATE })
       ),
       http.get('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
-        pgrstSingle({ ...mockRegistration })
+        pgrstSingle({ ...mockRegistration, appointment_date: FUTURE_BOOKING_DATE })
       )
     )
     const url = `http://localhost/api/register/${TOKEN}/plates?id=${mockRegistration.id}`
@@ -426,13 +426,13 @@ describe('PATCH /api/register/[token]/plates — time restrictions', () => {
   })
 
   it('allows plate change when >1h before slot', async () => {
-    // Future booking date → deadline passes
+    // Future appointment_date on registration → 1h deadline passes
     server.use(
       http.get('https://mock-supabase.test/rest/v1/bookings', () =>
         pgrstSingle({ ...mockBooking, booking_date: FUTURE_BOOKING_DATE, truck_company_id: mockCompany.id })
       ),
       http.get('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
-        pgrstSingle({ ...mockRegistration })
+        pgrstSingle({ ...mockRegistration, appointment_date: FUTURE_BOOKING_DATE })
       )
     )
     const url = `http://localhost/api/register/${TOKEN}/plates?id=${mockRegistration.id}`
@@ -450,7 +450,7 @@ describe('PATCH /api/register/[token]/plates — time restrictions', () => {
         pgrstSingle({ ...mockBooking, booking_date: FUTURE_BOOKING_DATE, truck_company_id: mockCompany.id })
       ),
       http.get('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
-        pgrstSingle({ ...mockRegistration })
+        pgrstSingle({ ...mockRegistration, appointment_date: FUTURE_BOOKING_DATE })
       )
     )
     const url = `http://localhost/api/register/${TOKEN}/plates?id=${mockRegistration.id}`
@@ -488,7 +488,7 @@ describe('PATCH /api/register/[token]/plates — time restrictions', () => {
         pgrstSingle({ ...mockBooking, booking_date: FUTURE_BOOKING_DATE, truck_company_id: mockCompany.id })
       ),
       http.get('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
-        pgrstSingle({ ...mockRegistration })
+        pgrstSingle({ ...mockRegistration, appointment_date: FUTURE_BOOKING_DATE })
       ),
       http.patch('https://mock-supabase.test/rest/v1/fastlane_registrations', () =>
         pgrstSingle({ ...mockRegistration, container_number: 'ZZZZ9999999' })

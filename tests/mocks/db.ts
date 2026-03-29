@@ -149,6 +149,7 @@ export const mockResetToken = {
 export const mockRegistration = {
   id: '00000000-0000-0000-0000-000000000200',
   booking_id: mockBooking.id,
+  appointment_date: BOOKING_DATE,
   hour_slot: 9,
   terminal_id: mockTerminal.id,
   license_plate: 'ABC-1234',
