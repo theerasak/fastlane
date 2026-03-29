@@ -60,6 +60,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
   const [editRegPlate, setEditRegPlate] = useState('')
   const [editRegSlot, setEditRegSlot] = useState('')
   const [savingReg, setSavingReg] = useState(false)
+  const [sendingDocs, setSendingDocs] = useState(false)
 
   async function fetchBooking() {
     const res = await fetch(`/api/bookings/${id}`)
@@ -177,6 +178,17 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
       showToast('Updated', 'success')
     } catch { showToast('Network error', 'error') }
     finally { setSavingReg(false) }
+  }
+
+  async function handleSendDocuments() {
+    setSendingDocs(true)
+    try {
+      const res = await fetch(`/api/bookings/${id}/send-documents`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) { showToast(json.error || 'Failed to send documents', 'error'); return }
+      showToast('Documents sent to truck company email', 'success')
+    } catch { showToast('Network error', 'error') }
+    finally { setSendingDocs(false) }
   }
 
   async function handleDeleteReg(regId: string) {
@@ -307,11 +319,18 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
             <h2 className="font-semibold text-gray-900">
               Registered Trucks ({registrations.length} / {booking.num_trucks})
             </h2>
-            {!addingReg && (
-              <Button size="sm" variant="secondary" onClick={() => { setAddingReg(true); setAddRegError('') }}>
-                + Add Truck
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {registrations.length > 0 && (
+                <Button size="sm" variant="secondary" loading={sendingDocs} onClick={handleSendDocuments}>
+                  Regenerate Documents
+                </Button>
+              )}
+              {!addingReg && (
+                <Button size="sm" variant="secondary" onClick={() => { setAddingReg(true); setAddRegError('') }}>
+                  + Add Truck
+                </Button>
+              )}
+            </div>
           </div>
 
           {addingReg && (
