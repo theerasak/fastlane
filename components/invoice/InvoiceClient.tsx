@@ -126,7 +126,7 @@ export function InvoiceClient() {
           )}
 
           <Table
-            headers={['Date & Time', 'Terminal', 'Booking No', 'Truck Company', 'TGC Code', 'Trucks', 'Amount (THB)']}
+            headers={['Date & Time', 'Terminal', 'Booking No', 'Truck Company', 'TGC Code', 'Containers', 'Rate (THB)', 'Amount (THB)']}
             isEmpty={rows.length === 0}
             emptyMessage="No bookings found in the selected date range."
           >
@@ -150,6 +150,7 @@ export function InvoiceClient() {
                   )}
                 </Td>
                 <Td className="text-right">{row.num_trucks}</Td>
+                <Td className="text-right font-mono">{formatAmount(row.price_per_container)}</Td>
                 <Td className="text-right font-mono">{formatAmount(row.amount)}</Td>
               </Tr>
             ))}

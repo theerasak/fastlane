@@ -17,8 +17,10 @@ const MOCK_ROWS = [
     truck_company_name: 'Priv Agent TC',
     fastlane_token: 'INV-TOKEN-001',
     token_cancelled: false,
+    is_privileged_booking: true,
     num_trucks: 2,
-    amount: 200,
+    price_per_container: 250,
+    amount: 500,  // 2 × 250
   },
   {
     id: 'inv-e2e-002',
@@ -29,8 +31,10 @@ const MOCK_ROWS = [
     truck_company_name: 'Priv Agent TC',
     fastlane_token: null,
     token_cancelled: false,
+    is_privileged_booking: false,
     num_trucks: 3,
-    amount: 300,
+    price_per_container: 500,
+    amount: 1500,  // 3 × 500
   },
 ]
 
@@ -77,14 +81,15 @@ test.describe('Invoice Summary — privileged agent', () => {
     await expect(page.getByText('INV-E2E-002')).toBeVisible()
   })
 
-  test('displays all expected columns including Terminal', async ({ page }) => {
+  test('displays all expected columns including Terminal and Rate', async ({ page }) => {
     await page.getByRole('button', { name: 'View' }).click()
     await expect(page.getByText('Date & Time')).toBeVisible()
     await expect(page.getByRole('columnheader', { name: /^terminal$/i })).toBeVisible()
     await expect(page.getByText('Booking No')).toBeVisible()
     await expect(page.getByText('Truck Company')).toBeVisible()
     await expect(page.getByText('TGC Code')).toBeVisible()
-    await expect(page.getByText('Trucks')).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: /containers/i })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: /rate/i })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Amount (THB)' })).toBeVisible()
   })
 
@@ -122,9 +127,9 @@ test.describe('Invoice Summary — privileged agent', () => {
 
   test('shows total amount in footer', async ({ page }) => {
     await page.getByRole('button', { name: 'View' }).click()
-    // Total = 200 + 300 = 500.00
+    // Total = 500 (2×250 privileged) + 1500 (3×500 non-privileged) = 2000.00
     await expect(page.getByText('Total Amount (THB)')).toBeVisible()
-    await expect(page.getByText('500.00')).toBeVisible()
+    await expect(page.getByText('2,000.00')).toBeVisible()
   })
 
   test('shows result count summary', async ({ page }) => {

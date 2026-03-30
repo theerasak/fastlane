@@ -1,19 +1,44 @@
 import { describe, it, expect } from 'vitest'
 
+// ── Pricing config ───────────────────────────────────────────────────────────
+
+import { PRICE_PER_CONTAINER_PRIVILEGED, PRICE_PER_CONTAINER_NON_PRIVILEGED } from '@/lib/config/pricing'
+
+describe('Pricing config', () => {
+  it('privileged price is 250 THB', () => {
+    expect(PRICE_PER_CONTAINER_PRIVILEGED).toBe(250)
+  })
+
+  it('non-privileged price is 500 THB', () => {
+    expect(PRICE_PER_CONTAINER_NON_PRIVILEGED).toBe(500)
+  })
+
+  it('privileged price is less than non-privileged price', () => {
+    expect(PRICE_PER_CONTAINER_PRIVILEGED).toBeLessThan(PRICE_PER_CONTAINER_NON_PRIVILEGED)
+  })
+})
+
 // ── Amount calculation ───────────────────────────────────────────────────────
 
 describe('Invoice — amount calculation', () => {
-  const calcAmount = (numTrucks: number) => numTrucks * 100
+  const calcAmount = (numTrucks: number, isPrivileged: boolean) =>
+    numTrucks * (isPrivileged ? PRICE_PER_CONTAINER_PRIVILEGED : PRICE_PER_CONTAINER_NON_PRIVILEGED)
 
-  it('calculates 100 THB per truck', () => {
-    expect(calcAmount(1)).toBe(100)
-    expect(calcAmount(2)).toBe(200)
-    expect(calcAmount(5)).toBe(500)
-    expect(calcAmount(10)).toBe(1000)
+  it('calculates 250 THB per container for privileged booking', () => {
+    expect(calcAmount(1, true)).toBe(250)
+    expect(calcAmount(2, true)).toBe(500)
+    expect(calcAmount(4, true)).toBe(1000)
   })
 
-  it('returns 0 for 0 trucks', () => {
-    expect(calcAmount(0)).toBe(0)
+  it('calculates 500 THB per container for non-privileged booking', () => {
+    expect(calcAmount(1, false)).toBe(500)
+    expect(calcAmount(2, false)).toBe(1000)
+    expect(calcAmount(4, false)).toBe(2000)
+  })
+
+  it('returns 0 for 0 trucks regardless of privilege', () => {
+    expect(calcAmount(0, true)).toBe(0)
+    expect(calcAmount(0, false)).toBe(0)
   })
 })
 
@@ -24,15 +49,16 @@ describe('Invoice — total amount', () => {
     rows.reduce((sum, r) => sum + r.amount, 0)
 
   it('sums all row amounts', () => {
-    expect(sumAmounts([{ amount: 100 }, { amount: 200 }, { amount: 300 }])).toBe(600)
+    expect(sumAmounts([{ amount: 250 }, { amount: 500 }, { amount: 750 }])).toBe(1500)
   })
 
   it('returns 0 for empty list', () => {
     expect(sumAmounts([])).toBe(0)
   })
 
-  it('handles single row', () => {
-    expect(sumAmounts([{ amount: 500 }])).toBe(500)
+  it('handles mixed privileged and non-privileged rows', () => {
+    // 2 privileged containers (2×250) + 1 non-privileged container (1×500)
+    expect(sumAmounts([{ amount: 500 }, { amount: 500 }])).toBe(1000)
   })
 })
 
@@ -110,6 +136,7 @@ describe('Invoice — row mapping', () => {
     booking_number: string
     num_trucks: number
     terminal_id: string
+    is_privileged_booking: boolean
     fastlane_token: string | null
     token_cancelled: boolean
     truck_companies: { name: string } | null
@@ -117,6 +144,9 @@ describe('Invoice — row mapping', () => {
   }
 
   function mapRow(b: RawBooking) {
+    const pricePerContainer = b.is_privileged_booking
+      ? PRICE_PER_CONTAINER_PRIVILEGED
+      : PRICE_PER_CONTAINER_NON_PRIVILEGED
     return {
       id: b.id,
       created_at: b.created_at,
@@ -126,41 +156,59 @@ describe('Invoice — row mapping', () => {
       truck_company_name: b.truck_companies?.name ?? '—',
       fastlane_token: b.fastlane_token,
       token_cancelled: b.token_cancelled,
+      is_privileged_booking: b.is_privileged_booking,
       num_trucks: b.num_trucks,
-      amount: b.num_trucks * 100,
+      price_per_container: pricePerContainer,
+      amount: b.num_trucks * pricePerContainer,
     }
   }
 
-  const raw: RawBooking = {
+  const rawPriv: RawBooking = {
     id: 'bk-001',
     created_at: '2026-03-11T08:00:00Z',
     booking_number: 'BK-001',
     num_trucks: 2,
     terminal_id: 'term-001',
+    is_privileged_booking: true,
     fastlane_token: 'TOKEN-001',
     token_cancelled: false,
     truck_companies: { name: 'Alpha Logistics' },
     port_terminals: { id: 'term-001', name: 'Terminal A' },
   }
 
+  const rawNonPriv: RawBooking = { ...rawPriv, id: 'bk-002', is_privileged_booking: false }
+
   it('maps terminal_id and terminal_name from port_terminals join', () => {
-    const row = mapRow(raw)
+    const row = mapRow(rawPriv)
     expect(row.terminal_id).toBe('term-001')
     expect(row.terminal_name).toBe('Terminal A')
   })
 
   it('uses em-dash for terminal_name when port_terminals is null', () => {
-    const row = mapRow({ ...raw, port_terminals: null })
+    const row = mapRow({ ...rawPriv, port_terminals: null })
     expect(row.terminal_name).toBe('—')
   })
 
+  it('uses 250 THB price and correct amount for privileged booking', () => {
+    const row = mapRow(rawPriv)
+    expect(row.is_privileged_booking).toBe(true)
+    expect(row.price_per_container).toBe(250)
+    expect(row.amount).toBe(500) // 2 × 250
+  })
+
+  it('uses 500 THB price and correct amount for non-privileged booking', () => {
+    const row = mapRow(rawNonPriv)
+    expect(row.is_privileged_booking).toBe(false)
+    expect(row.price_per_container).toBe(500)
+    expect(row.amount).toBe(1000) // 2 × 500
+  })
+
   it('maps all other fields correctly', () => {
-    const row = mapRow(raw)
+    const row = mapRow(rawPriv)
     expect(row.id).toBe('bk-001')
     expect(row.booking_number).toBe('BK-001')
     expect(row.truck_company_name).toBe('Alpha Logistics')
     expect(row.num_trucks).toBe(2)
-    expect(row.amount).toBe(200)
     expect(row.fastlane_token).toBe('TOKEN-001')
     expect(row.token_cancelled).toBe(false)
   })

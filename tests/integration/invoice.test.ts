@@ -18,6 +18,7 @@ const mockInvoiceBookings = [
     booking_number: 'BK-INV-001',
     num_trucks: 2,
     terminal_id: mockTerminal.id,
+    is_privileged_booking: true,
     fastlane_token: 'TOKEN-001',
     token_cancelled: false,
     truck_companies: { name: 'Alpha Logistics' },
@@ -29,6 +30,7 @@ const mockInvoiceBookings = [
     booking_number: 'BK-INV-002',
     num_trucks: 3,
     terminal_id: mockTerminalB.id,
+    is_privileged_booking: false,
     fastlane_token: null,
     token_cancelled: false,
     truck_companies: { name: 'Zeta Transport' },
@@ -143,7 +145,7 @@ describe('GET /api/invoice — successful responses', () => {
     expect(body.data).toHaveLength(2)
   })
 
-  it('calculates amount as num_trucks × 100', async () => {
+  it('calculates amount using privileged price (250) for privileged bookings', async () => {
     const req = await createAuthRequest(
       `http://localhost/api/invoice?from_date=2026-03-01&to_date=2026-03-31`,
       { role: 'agent', userId: mockPrivilegedAgent.id }
@@ -151,9 +153,22 @@ describe('GET /api/invoice — successful responses', () => {
     const res = await getInvoice(req)
     const body = await res.json()
     const row0 = body.data.find((r: { booking_number: string }) => r.booking_number === 'BK-INV-001')
+    expect(row0.is_privileged_booking).toBe(true)
+    expect(row0.price_per_container).toBe(250)
+    expect(row0.amount).toBe(500)  // 2 trucks × 250
+  })
+
+  it('calculates amount using non-privileged price (500) for non-privileged bookings', async () => {
+    const req = await createAuthRequest(
+      `http://localhost/api/invoice?from_date=2026-03-01&to_date=2026-03-31`,
+      { role: 'agent', userId: mockPrivilegedAgent.id }
+    )
+    const res = await getInvoice(req)
+    const body = await res.json()
     const row1 = body.data.find((r: { booking_number: string }) => r.booking_number === 'BK-INV-002')
-    expect(row0.amount).toBe(200)  // 2 trucks × 100
-    expect(row1.amount).toBe(300)  // 3 trucks × 100
+    expect(row1.is_privileged_booking).toBe(false)
+    expect(row1.price_per_container).toBe(500)
+    expect(row1.amount).toBe(1500)  // 3 trucks × 500
   })
 
   it('returns rows sorted oldest created_at first', async () => {
@@ -167,7 +182,7 @@ describe('GET /api/invoice — successful responses', () => {
     expect(body.data[1].booking_number).toBe('BK-INV-002')
   })
 
-  it('returns correct shape for each row including terminal fields', async () => {
+  it('returns correct shape for each row including terminal and pricing fields', async () => {
     const req = await createAuthRequest(
       `http://localhost/api/invoice?from_date=2026-03-01&to_date=2026-03-31`,
       { role: 'agent', userId: mockPrivilegedAgent.id }
@@ -183,7 +198,9 @@ describe('GET /api/invoice — successful responses', () => {
     expect(row).toHaveProperty('truck_company_name')
     expect(row).toHaveProperty('fastlane_token')
     expect(row).toHaveProperty('token_cancelled')
+    expect(row).toHaveProperty('is_privileged_booking')
     expect(row).toHaveProperty('num_trucks')
+    expect(row).toHaveProperty('price_per_container')
     expect(row).toHaveProperty('amount')
   })
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import { handleApiError, ApiError } from '@/lib/api/errors'
+import { PRICE_PER_CONTAINER_PRIVILEGED, PRICE_PER_CONTAINER_NON_PRIVILEGED } from '@/lib/config/pricing'
 
 export interface InvoiceRow {
   id: string
@@ -12,7 +13,9 @@ export interface InvoiceRow {
   truck_company_name: string
   fastlane_token: string | null
   token_cancelled: boolean
+  is_privileged_booking: boolean
   num_trucks: number
+  price_per_container: number
   amount: number
 }
 
@@ -45,7 +48,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from('bookings')
       .select(`
-        id, created_at, booking_number, num_trucks, terminal_id,
+        id, created_at, booking_number, num_trucks, terminal_id, is_privileged_booking,
         fastlane_token, token_cancelled,
         truck_companies(name),
         port_terminals(id, name)
@@ -62,18 +65,25 @@ export async function GET(req: NextRequest) {
 
     if (error) throw ApiError.internal(error.message)
 
-    const rows: InvoiceRow[] = (data ?? []).map((b: Record<string, unknown>) => ({
-      id: b.id as string,
-      created_at: b.created_at as string,
-      terminal_id: b.terminal_id as string,
-      terminal_name: (b.port_terminals as { id: string; name: string } | null)?.name ?? '—',
-      booking_number: b.booking_number as string,
-      truck_company_name: (b.truck_companies as { name: string } | null)?.name ?? '—',
-      fastlane_token: b.fastlane_token as string | null,
-      token_cancelled: b.token_cancelled as boolean,
-      num_trucks: b.num_trucks as number,
-      amount: (b.num_trucks as number) * 100,
-    }))
+    const rows: InvoiceRow[] = (data ?? []).map((b: Record<string, unknown>) => {
+      const isPrivileged = b.is_privileged_booking as boolean
+      const numTrucks = b.num_trucks as number
+      const pricePerContainer = isPrivileged ? PRICE_PER_CONTAINER_PRIVILEGED : PRICE_PER_CONTAINER_NON_PRIVILEGED
+      return {
+        id: b.id as string,
+        created_at: b.created_at as string,
+        terminal_id: b.terminal_id as string,
+        terminal_name: (b.port_terminals as { id: string; name: string } | null)?.name ?? '—',
+        booking_number: b.booking_number as string,
+        truck_company_name: (b.truck_companies as { name: string } | null)?.name ?? '—',
+        fastlane_token: b.fastlane_token as string | null,
+        token_cancelled: b.token_cancelled as boolean,
+        is_privileged_booking: isPrivileged,
+        num_trucks: numTrucks,
+        price_per_container: pricePerContainer,
+        amount: numTrucks * pricePerContainer,
+      }
+    })
 
     rows.sort((a, b) => {
       const d = a.created_at.localeCompare(b.created_at)
