@@ -179,13 +179,16 @@ test.describe('Daily Summary — table content with seeded data', () => {
     }
   })
 
-  test('table columns are present', async ({ page }) => {
+  test('table columns are present including Terminal as first column', async ({ page }) => {
     await loginAs(page, 'supervisor')
     await page.goto('/daily-summary?date=2099-12-31')
     await page.waitForLoadState('networkidle')
 
     const hasTable = await page.getByTestId('summary-table').isVisible().catch(() => false)
     if (hasTable) {
+      const headers = page.locator('th')
+      // Terminal must be the very first <th>
+      await expect(headers.first()).toContainText(/terminal/i)
       await expect(page.getByRole('columnheader', { name: /^date$/i })).toBeVisible()
       await expect(page.getByRole('columnheader', { name: /^time$/i })).toBeVisible()
       await expect(page.getByRole('columnheader', { name: /container/i })).toBeVisible()
@@ -193,5 +196,77 @@ test.describe('Daily Summary — table content with seeded data', () => {
       await expect(page.getByRole('columnheader', { name: /truck company/i })).toBeVisible()
       await expect(page.getByRole('columnheader', { name: /booking/i })).toBeVisible()
     }
+  })
+})
+
+// ── Terminal filter ──────────────────────────────────────────────────────────
+
+test.describe('Daily Summary — terminal filter', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAs(page, 'supervisor')
+    await page.goto('/daily-summary')
+    await page.waitForLoadState('networkidle')
+  })
+
+  test('terminal filter dropdown is visible', async ({ page }) => {
+    await expect(page.getByTestId('terminal-filter')).toBeVisible()
+    await expect(page.getByTestId('terminal-select')).toBeVisible()
+  })
+
+  test('terminal filter defaults to All terminals', async ({ page }) => {
+    const select = page.getByTestId('terminal-select')
+    await expect(select).toHaveValue('')
+  })
+
+  test('terminal filter select has All terminals option', async ({ page }) => {
+    const select = page.getByTestId('terminal-select')
+    const options = await select.locator('option').allTextContents()
+    expect(options[0]).toMatch(/all terminals/i)
+  })
+
+  test('selecting a terminal updates the URL with terminal_id param', async ({ page }) => {
+    const select = page.getByTestId('terminal-select')
+    const optionCount = await select.locator('option').count()
+    // Only run if there is at least one real terminal option beyond "All"
+    if (optionCount < 2) return
+
+    const secondOption = select.locator('option').nth(1)
+    const value = await secondOption.getAttribute('value')
+    await select.selectOption(value!)
+    await page.waitForLoadState('networkidle')
+
+    expect(page.url()).toContain(`terminal_id=${value}`)
+  })
+
+  test('selecting All terminals removes terminal_id from URL', async ({ page }) => {
+    // First set a terminal filter via URL
+    const select = page.getByTestId('terminal-select')
+    const optionCount = await select.locator('option').count()
+    if (optionCount < 2) return
+
+    const secondOption = select.locator('option').nth(1)
+    const value = await secondOption.getAttribute('value')
+    await select.selectOption(value!)
+    await page.waitForLoadState('networkidle')
+
+    // Now select "All terminals"
+    await select.selectOption('')
+    await page.waitForLoadState('networkidle')
+    expect(page.url()).not.toContain('terminal_id')
+  })
+
+  test('terminal_id in URL pre-selects the matching option', async ({ page }) => {
+    const select = page.getByTestId('terminal-select')
+    const optionCount = await select.locator('option').count()
+    if (optionCount < 2) return
+
+    const secondOption = select.locator('option').nth(1)
+    const value = await secondOption.getAttribute('value')
+
+    // Navigate with terminal_id param
+    await page.goto(`/daily-summary?terminal_id=${value}`)
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByTestId('terminal-select')).toHaveValue(value!)
   })
 })

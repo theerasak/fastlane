@@ -5,6 +5,8 @@ import { handleApiError, ApiError } from '@/lib/api/errors'
 
 export interface DailySummaryRow {
   id: string
+  terminal_id: string
+  terminal_name: string
   booking_date: string
   hour_slot: number
   license_plate: string
@@ -25,22 +27,37 @@ export async function GET(req: NextRequest) {
       throw ApiError.badRequest('date must be in YYYY-MM-DD format')
     }
 
+    const terminalId = req.nextUrl.searchParams.get('terminal_id')
+
     const supabase = getServerClient()
-    const { data, error } = await supabase
+    let query = supabase
       .from('fastlane_registrations')
       .select(`
         id, appointment_date, hour_slot, license_plate, container_number, registered_at,
-        bookings!inner(booking_number, truck_companies!inner(name))
+        bookings!inner(booking_number, truck_companies!inner(name), terminal_id, port_terminals!inner(id, name))
       `)
       .eq('is_deleted', false)
       .eq('appointment_date', date)
 
+    if (terminalId) {
+      query = query.eq('bookings.terminal_id', terminalId)
+    }
+
+    const { data, error } = await query
+
     if (error) throw ApiError.internal(error.message)
 
     const rows: DailySummaryRow[] = (data ?? []).map((r: Record<string, unknown>) => {
-      const booking = r.bookings as { booking_number: string; truck_companies: { name: string } | null } | null
+      const booking = r.bookings as {
+        booking_number: string
+        terminal_id: string
+        truck_companies: { name: string } | null
+        port_terminals: { id: string; name: string } | null
+      } | null
       return {
         id: r.id as string,
+        terminal_id: booking?.terminal_id ?? '',
+        terminal_name: booking?.port_terminals?.name ?? '—',
         booking_date: r.appointment_date as string,
         hour_slot: r.hour_slot as number,
         license_plate: r.license_plate as string,
@@ -52,6 +69,8 @@ export async function GET(req: NextRequest) {
     })
 
     rows.sort((a, b) => {
+      const t = a.terminal_name.localeCompare(b.terminal_name)
+      if (t !== 0) return t
       const d = a.booking_date.localeCompare(b.booking_date)
       if (d !== 0) return d
       if (a.hour_slot !== b.hour_slot) return a.hour_slot - b.hour_slot

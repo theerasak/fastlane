@@ -7,6 +7,8 @@ import { shiftDate } from '@/lib/utils/date'
 import { PageSpinner } from '@/components/ui/Spinner'
 import type { DailySummaryRow } from '@/app/api/daily-summary/route'
 
+interface Terminal { id: string; name: string }
+
 function todayLocal(): string {
   const now = new Date()
   return [
@@ -24,17 +26,29 @@ function DailySummaryContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialDate = searchParams.get('date') ?? todayLocal()
+  const initialTerminal = searchParams.get('terminal_id') ?? ''
 
   const [date, setDate] = useState(initialDate)
+  const [terminalId, setTerminalId] = useState(initialTerminal)
+  const [terminals, setTerminals] = useState<Terminal[]>([])
   const [rows, setRows] = useState<DailySummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const fetchSummary = useCallback(async (d: string) => {
+  useEffect(() => {
+    fetch('/api/terminals')
+      .then(r => r.json())
+      .then(j => setTerminals((j.data ?? []).filter((t: Terminal & { is_active: boolean }) => t.is_active)))
+      .catch(() => {})
+  }, [])
+
+  const fetchSummary = useCallback(async (d: string, tid: string) => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/daily-summary?date=${d}`)
+      const params = new URLSearchParams({ date: d })
+      if (tid) params.set('terminal_id', tid)
+      const res = await fetch(`/api/daily-summary?${params}`)
       const json = await res.json()
       if (!res.ok) { setError(json.error ?? 'Failed to load'); return }
       setRows(json.data ?? [])
@@ -46,12 +60,22 @@ function DailySummaryContent() {
   }, [])
 
   useEffect(() => {
-    fetchSummary(date)
-  }, [date, fetchSummary])
+    fetchSummary(date, terminalId)
+  }, [date, terminalId, fetchSummary])
 
-  function navigate(newDate: string) {
+  function navigate(newDate: string, newTerminalId?: string) {
+    const tid = newTerminalId !== undefined ? newTerminalId : terminalId
     setDate(newDate)
-    router.replace(`/daily-summary?date=${newDate}`, { scroll: false })
+    const params = new URLSearchParams({ date: newDate })
+    if (tid) params.set('terminal_id', tid)
+    router.replace(`/daily-summary?${params}`, { scroll: false })
+  }
+
+  function handleTerminalChange(newTid: string) {
+    setTerminalId(newTid)
+    const params = new URLSearchParams({ date })
+    if (newTid) params.set('terminal_id', newTid)
+    router.replace(`/daily-summary?${params}`, { scroll: false })
   }
 
   return (
@@ -96,6 +120,25 @@ function DailySummaryContent() {
         </button>
       </div>
 
+      {/* Terminal filter */}
+      <div className="card flex items-center gap-3 flex-wrap" data-testid="terminal-filter">
+        <label htmlFor="terminal-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+          Terminal
+        </label>
+        <select
+          id="terminal-select"
+          value={terminalId}
+          onChange={e => handleTerminalChange(e.target.value)}
+          className="input-field text-sm py-1.5 w-auto"
+          data-testid="terminal-select"
+        >
+          <option value="">All terminals</option>
+          {terminals.map(t => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Table */}
       {loading ? (
         <PageSpinner />
@@ -110,6 +153,7 @@ function DailySummaryContent() {
           <table className="w-full text-sm" data-testid="summary-table">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Terminal</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Date</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Time</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Container No.</th>
@@ -121,6 +165,7 @@ function DailySummaryContent() {
             <tbody className="divide-y divide-gray-100">
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50" data-testid="summary-row">
+                  <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{row.terminal_name}</td>
                   <td className="px-4 py-3 font-mono text-gray-900 whitespace-nowrap">{row.booking_date}</td>
                   <td className="px-4 py-3 font-mono text-gray-900 whitespace-nowrap">{formatHour(row.hour_slot)}</td>
                   <td className="px-4 py-3 font-mono text-gray-700 whitespace-nowrap">{row.container_number}</td>
