@@ -101,6 +101,71 @@ describe('Invoice — sort order', () => {
   })
 })
 
+// ── Row mapping ──────────────────────────────────────────────────────────────
+
+describe('Invoice — row mapping', () => {
+  type RawBooking = {
+    id: string
+    created_at: string
+    booking_number: string
+    num_trucks: number
+    terminal_id: string
+    fastlane_token: string | null
+    token_cancelled: boolean
+    truck_companies: { name: string } | null
+    port_terminals: { id: string; name: string } | null
+  }
+
+  function mapRow(b: RawBooking) {
+    return {
+      id: b.id,
+      created_at: b.created_at,
+      terminal_id: b.terminal_id,
+      terminal_name: b.port_terminals?.name ?? '—',
+      booking_number: b.booking_number,
+      truck_company_name: b.truck_companies?.name ?? '—',
+      fastlane_token: b.fastlane_token,
+      token_cancelled: b.token_cancelled,
+      num_trucks: b.num_trucks,
+      amount: b.num_trucks * 100,
+    }
+  }
+
+  const raw: RawBooking = {
+    id: 'bk-001',
+    created_at: '2026-03-11T08:00:00Z',
+    booking_number: 'BK-001',
+    num_trucks: 2,
+    terminal_id: 'term-001',
+    fastlane_token: 'TOKEN-001',
+    token_cancelled: false,
+    truck_companies: { name: 'Alpha Logistics' },
+    port_terminals: { id: 'term-001', name: 'Terminal A' },
+  }
+
+  it('maps terminal_id and terminal_name from port_terminals join', () => {
+    const row = mapRow(raw)
+    expect(row.terminal_id).toBe('term-001')
+    expect(row.terminal_name).toBe('Terminal A')
+  })
+
+  it('uses em-dash for terminal_name when port_terminals is null', () => {
+    const row = mapRow({ ...raw, port_terminals: null })
+    expect(row.terminal_name).toBe('—')
+  })
+
+  it('maps all other fields correctly', () => {
+    const row = mapRow(raw)
+    expect(row.id).toBe('bk-001')
+    expect(row.booking_number).toBe('BK-001')
+    expect(row.truck_company_name).toBe('Alpha Logistics')
+    expect(row.num_trucks).toBe(2)
+    expect(row.amount).toBe(200)
+    expect(row.fastlane_token).toBe('TOKEN-001')
+    expect(row.token_cancelled).toBe(false)
+  })
+})
+
 // ── Date format validation ───────────────────────────────────────────────────
 
 describe('Invoice — date parameter validation', () => {

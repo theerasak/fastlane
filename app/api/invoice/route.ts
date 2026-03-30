@@ -6,6 +6,8 @@ import { handleApiError, ApiError } from '@/lib/api/errors'
 export interface InvoiceRow {
   id: string
   created_at: string
+  terminal_id: string
+  terminal_name: string
   booking_number: string
   truck_company_name: string
   fastlane_token: string | null
@@ -32,6 +34,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl
     const fromDate = searchParams.get('from_date')
     const toDate = searchParams.get('to_date')
+    const terminalId = searchParams.get('terminal_id')
 
     if (!fromDate || !toDate) throw ApiError.badRequest('from_date and to_date are required')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
@@ -39,22 +42,31 @@ export async function GET(req: NextRequest) {
     }
 
     // Use Bangkok (UTC+7) boundaries for the selected dates
-    const { data, error } = await supabase
+    let query = supabase
       .from('bookings')
       .select(`
-        id, created_at, booking_number, num_trucks,
+        id, created_at, booking_number, num_trucks, terminal_id,
         fastlane_token, token_cancelled,
-        truck_companies(name)
+        truck_companies(name),
+        port_terminals(id, name)
       `)
       .eq('created_by', session.id)
       .gte('created_at', `${fromDate}T00:00:00+07:00`)
       .lte('created_at', `${toDate}T23:59:59.999+07:00`)
+
+    if (terminalId) {
+      query = query.eq('terminal_id', terminalId)
+    }
+
+    const { data, error } = await query
 
     if (error) throw ApiError.internal(error.message)
 
     const rows: InvoiceRow[] = (data ?? []).map((b: Record<string, unknown>) => ({
       id: b.id as string,
       created_at: b.created_at as string,
+      terminal_id: b.terminal_id as string,
+      terminal_name: (b.port_terminals as { id: string; name: string } | null)?.name ?? '—',
       booking_number: b.booking_number as string,
       truck_company_name: (b.truck_companies as { name: string } | null)?.name ?? '—',
       fastlane_token: b.fastlane_token as string | null,

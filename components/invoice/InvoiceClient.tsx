@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Table, Td, Tr } from '@/components/ui/Table'
 import { showToast } from '@/components/ui/Toast'
 import type { InvoiceRow } from '@/app/api/invoice/route'
+
+interface Terminal { id: string; name: string }
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-GB', {
@@ -29,15 +31,26 @@ export function InvoiceClient() {
 
   const [fromDate, setFromDate] = useState(firstOfMonth)
   const [toDate, setToDate] = useState(today)
+  const [terminalId, setTerminalId] = useState('')
+  const [terminals, setTerminals] = useState<Terminal[]>([])
   const [rows, setRows] = useState<InvoiceRow[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [queried, setQueried] = useState<{ from: string; to: string } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/terminals')
+      .then(r => r.json())
+      .then(j => setTerminals((j.data ?? []).filter((t: Terminal & { is_active: boolean }) => t.is_active)))
+      .catch(() => {})
+  }, [])
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await fetch(`/api/invoice?from_date=${fromDate}&to_date=${toDate}`)
+      const params = new URLSearchParams({ from_date: fromDate, to_date: toDate })
+      if (terminalId) params.set('terminal_id', terminalId)
+      const res = await fetch(`/api/invoice?${params}`)
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load invoice')
       setRows(json.data)
@@ -81,6 +94,20 @@ export function InvoiceClient() {
               required
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Terminal</label>
+            <select
+              value={terminalId}
+              onChange={e => setTerminalId(e.target.value)}
+              className="input-field"
+              data-testid="terminal-select"
+            >
+              <option value="">All terminals</option>
+              {terminals.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
           <Button type="submit" loading={loading}>
             View
           </Button>
@@ -99,13 +126,14 @@ export function InvoiceClient() {
           )}
 
           <Table
-            headers={['Date & Time', 'Booking No', 'Truck Company', 'TGC Code', 'Trucks', 'Amount (THB)']}
+            headers={['Date & Time', 'Terminal', 'Booking No', 'Truck Company', 'TGC Code', 'Trucks', 'Amount (THB)']}
             isEmpty={rows.length === 0}
             emptyMessage="No bookings found in the selected date range."
           >
             {rows.map(row => (
               <Tr key={row.id}>
                 <Td className="whitespace-nowrap">{formatDateTime(row.created_at)}</Td>
+                <Td className="whitespace-nowrap">{row.terminal_name}</Td>
                 <Td className="font-mono font-medium whitespace-nowrap">{row.booking_number}</Td>
                 <Td>{row.truck_company_name}</Td>
                 <Td>

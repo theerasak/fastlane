@@ -12,6 +12,8 @@ const MOCK_ROWS = [
     id: 'inv-e2e-001',
     created_at: '2026-03-11T01:00:00Z', // 08:00 Bangkok time
     booking_number: 'INV-E2E-001',
+    terminal_id: 'term-001',
+    terminal_name: 'Terminal A',
     truck_company_name: 'Priv Agent TC',
     fastlane_token: 'INV-TOKEN-001',
     token_cancelled: false,
@@ -22,6 +24,8 @@ const MOCK_ROWS = [
     id: 'inv-e2e-002',
     created_at: '2026-03-12T02:30:00Z', // 09:30 Bangkok time
     booking_number: 'INV-E2E-002',
+    terminal_id: 'term-002',
+    terminal_name: 'Terminal B',
     truck_company_name: 'Priv Agent TC',
     fastlane_token: null,
     token_cancelled: false,
@@ -73,14 +77,29 @@ test.describe('Invoice Summary — privileged agent', () => {
     await expect(page.getByText('INV-E2E-002')).toBeVisible()
   })
 
-  test('displays all expected columns', async ({ page }) => {
+  test('displays all expected columns including Terminal', async ({ page }) => {
     await page.getByRole('button', { name: 'View' }).click()
     await expect(page.getByText('Date & Time')).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: /^terminal$/i })).toBeVisible()
     await expect(page.getByText('Booking No')).toBeVisible()
     await expect(page.getByText('Truck Company')).toBeVisible()
     await expect(page.getByText('TGC Code')).toBeVisible()
     await expect(page.getByText('Trucks')).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Amount (THB)' })).toBeVisible()
+  })
+
+  test('Terminal column is the second column (after Date & Time)', async ({ page }) => {
+    await page.getByRole('button', { name: 'View' }).click()
+    const headers = page.locator('th')
+    await expect(headers.nth(0)).toContainText(/date & time/i)
+    await expect(headers.nth(1)).toContainText(/terminal/i)
+    await expect(headers.nth(2)).toContainText(/booking no/i)
+  })
+
+  test('shows terminal name in results', async ({ page }) => {
+    await page.getByRole('button', { name: 'View' }).click()
+    await expect(page.getByText('Terminal A').first()).toBeVisible()
+    await expect(page.getByText('Terminal B').first()).toBeVisible()
   })
 
   test('shows truck company name in results', async ({ page }) => {
@@ -123,6 +142,45 @@ test.describe('Invoice Summary — privileged agent', () => {
     )
     await page.getByRole('button', { name: 'View' }).click()
     await expect(page.getByText('No bookings found in the selected date range.')).toBeVisible()
+  })
+
+  test('terminal filter dropdown is visible in the form', async ({ page }) => {
+    await expect(page.getByTestId('terminal-select')).toBeVisible()
+  })
+
+  test('terminal filter defaults to All terminals', async ({ page }) => {
+    await expect(page.getByTestId('terminal-select')).toHaveValue('')
+  })
+
+  test('terminal filter select has All terminals option', async ({ page }) => {
+    const options = await page.getByTestId('terminal-select').locator('option').allTextContents()
+    expect(options[0]).toMatch(/all terminals/i)
+  })
+
+  test('selecting a terminal appends terminal_id to the API request', async ({ page }) => {
+    const capturedUrls: string[] = []
+    await page.route(`**${INVOICE_API}*`, route => {
+      capturedUrls.push(route.request().url())
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: MOCK_ROWS }),
+      })
+    })
+
+    const select = page.getByTestId('terminal-select')
+    const optionCount = await select.locator('option').count()
+    if (optionCount >= 2) {
+      const val = await select.locator('option').nth(1).getAttribute('value')
+      await select.selectOption(val!)
+    }
+
+    await page.getByRole('button', { name: 'View' }).click()
+    await page.waitForLoadState('networkidle')
+
+    if (optionCount >= 2) {
+      expect(capturedUrls.some(u => u.includes('terminal_id='))).toBe(true)
+    }
   })
 })
 
