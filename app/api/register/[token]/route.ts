@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { handleApiError, ApiError } from '@/lib/api/errors'
 import { getTcSession } from '@/lib/auth/tc-session'
-import { DEFAULT_SLOT_CAPACITY_PRIVILEGED, DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED } from '@/lib/constants'
+import { getDefaultSlotCapacity } from '@/lib/constants'
 
 /** Inserts 24 default capacity rows for a terminal/date if none exist. */
 async function ensureCapacityExists(terminalId: string, date: string) {
@@ -20,8 +20,7 @@ async function ensureCapacityExists(terminalId: string, date: string) {
     terminal_id: terminalId,
     date,
     hour_slot: i,
-    capacity_privileged: DEFAULT_SLOT_CAPACITY_PRIVILEGED,
-    capacity_non_privileged: DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED,
+    ...getDefaultSlotCapacity(i),
   }))
   await supabase.from('terminal_capacity').insert(rows)
 }

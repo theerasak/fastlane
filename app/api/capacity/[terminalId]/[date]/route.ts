@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import { handleApiError, ApiError } from '@/lib/api/errors'
-import { DEFAULT_SLOT_CAPACITY_PRIVILEGED, DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED, HOUR_SLOTS } from '@/lib/constants'
+import { getDefaultSlotCapacity, HOUR_SLOTS } from '@/lib/constants'
 import { z } from 'zod'
 
 const UpdateCapacitySchema = z.object({
@@ -37,8 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<Params
       terminal_id: terminalId,
       date,
       hour_slot,
-      capacity_privileged: DEFAULT_SLOT_CAPACITY_PRIVILEGED,
-      capacity_non_privileged: DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED,
+      ...getDefaultSlotCapacity(hour_slot),
     }))
 
     await supabase

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import { handleApiError, ApiError } from '@/lib/api/errors'
-import { DEFAULT_SLOT_CAPACITY_PRIVILEGED, DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED } from '@/lib/constants'
+import { getDefaultSlotCapacity } from '@/lib/constants'
 
 interface CsvRow {
   terminal_name: string
@@ -54,8 +54,9 @@ function parseCsv(text: string): { rows: CsvRow[]; errors: RowError[] } {
       errors.push({ line: lineNum, message: `Invalid hour_slot: "${hourSlotRaw}" (must be 0–23)` }); continue
     }
 
-    const capPriv = capPrivRaw === '' ? DEFAULT_SLOT_CAPACITY_PRIVILEGED : parseInt(capPrivRaw, 10)
-    const capNonPriv = capNonPrivRaw === '' ? DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED : parseInt(capNonPrivRaw, 10)
+    const slotDefaults = getDefaultSlotCapacity(hourSlot)
+    const capPriv = capPrivRaw === '' ? slotDefaults.capacity_privileged : parseInt(capPrivRaw, 10)
+    const capNonPriv = capNonPrivRaw === '' ? slotDefaults.capacity_non_privileged : parseInt(capNonPrivRaw, 10)
 
     if (isNaN(capPriv) || capPriv < 0 || capPriv > 999) {
       errors.push({ line: lineNum, message: `Invalid capacity_privileged: "${capPrivRaw}" (must be 0–999)` }); continue

@@ -1,9 +1,73 @@
 import { describe, it, expect } from 'vitest'
+import {
+  getDefaultSlotCapacity,
+  DEFAULT_CAPACITY_EVEN_PRIVILEGED,
+  DEFAULT_CAPACITY_EVEN_NON_PRIVILEGED,
+  DEFAULT_CAPACITY_ODD_PRIVILEGED,
+  DEFAULT_CAPACITY_ODD_NON_PRIVILEGED,
+} from '@/lib/constants'
+
+// ── Default slot capacity ─────────────────────────────────────────────────────
+
+describe('getDefaultSlotCapacity — even hours', () => {
+  it('returns configured even-hour defaults for hour 0', () => {
+    const d = getDefaultSlotCapacity(0)
+    expect(d.capacity_privileged).toBe(DEFAULT_CAPACITY_EVEN_PRIVILEGED)
+    expect(d.capacity_non_privileged).toBe(DEFAULT_CAPACITY_EVEN_NON_PRIVILEGED)
+  })
+
+  it('returns even-hour defaults for all even slots (0,2,4,...,22)', () => {
+    for (let h = 0; h <= 22; h += 2) {
+      const d = getDefaultSlotCapacity(h)
+      expect(d.capacity_privileged).toBe(DEFAULT_CAPACITY_EVEN_PRIVILEGED)
+      expect(d.capacity_non_privileged).toBe(DEFAULT_CAPACITY_EVEN_NON_PRIVILEGED)
+    }
+  })
+
+  it('even-hour default values are 1 privileged and 1 non-privileged', () => {
+    expect(DEFAULT_CAPACITY_EVEN_PRIVILEGED).toBe(1)
+    expect(DEFAULT_CAPACITY_EVEN_NON_PRIVILEGED).toBe(1)
+  })
+})
+
+describe('getDefaultSlotCapacity — odd hours', () => {
+  it('returns configured odd-hour defaults for hour 1', () => {
+    const d = getDefaultSlotCapacity(1)
+    expect(d.capacity_privileged).toBe(DEFAULT_CAPACITY_ODD_PRIVILEGED)
+    expect(d.capacity_non_privileged).toBe(DEFAULT_CAPACITY_ODD_NON_PRIVILEGED)
+  })
+
+  it('returns odd-hour defaults for all odd slots (1,3,5,...,23)', () => {
+    for (let h = 1; h <= 23; h += 2) {
+      const d = getDefaultSlotCapacity(h)
+      expect(d.capacity_privileged).toBe(DEFAULT_CAPACITY_ODD_PRIVILEGED)
+      expect(d.capacity_non_privileged).toBe(DEFAULT_CAPACITY_ODD_NON_PRIVILEGED)
+    }
+  })
+
+  it('odd-hour default values are 2 privileged and 0 non-privileged', () => {
+    expect(DEFAULT_CAPACITY_ODD_PRIVILEGED).toBe(2)
+    expect(DEFAULT_CAPACITY_ODD_NON_PRIVILEGED).toBe(0)
+  })
+})
+
+describe('getDefaultSlotCapacity — all 24 slots produce valid objects', () => {
+  it('returns an object with both capacity keys for every slot', () => {
+    for (let h = 0; h < 24; h++) {
+      const d = getDefaultSlotCapacity(h)
+      expect(d).toHaveProperty('capacity_privileged')
+      expect(d).toHaveProperty('capacity_non_privileged')
+    }
+  })
+
+  it('even and odd slots produce distinct defaults', () => {
+    const even = getDefaultSlotCapacity(0)
+    const odd = getDefaultSlotCapacity(1)
+    expect(even).not.toEqual(odd)
+  })
+})
 
 // ── Replicate parseCsv logic from app/api/capacity/import/route.ts ────────────
-
-const DEFAULT_CAP_PRIV = 1
-const DEFAULT_CAP_NON_PRIV = 1
 
 interface CsvRow {
   terminal_name: string
@@ -45,8 +109,9 @@ function parseCsv(text: string, today = '2026-03-30'): { rows: CsvRow[]; errors:
     const hourSlot = parseInt(hourSlotRaw, 10)
     if (isNaN(hourSlot) || hourSlot < 0 || hourSlot > 23) { errors.push({ line: lineNum, message: `Invalid hour_slot: "${hourSlotRaw}" (must be 0–23)` }); continue }
 
-    const capPriv = capPrivRaw === '' ? DEFAULT_CAP_PRIV : parseInt(capPrivRaw, 10)
-    const capNonPriv = capNonPrivRaw === '' ? DEFAULT_CAP_NON_PRIV : parseInt(capNonPrivRaw, 10)
+    const slotDefaults = getDefaultSlotCapacity(hourSlot)
+    const capPriv = capPrivRaw === '' ? slotDefaults.capacity_privileged : parseInt(capPrivRaw, 10)
+    const capNonPriv = capNonPrivRaw === '' ? slotDefaults.capacity_non_privileged : parseInt(capNonPrivRaw, 10)
 
     if (isNaN(capPriv) || capPriv < 0 || capPriv > 999) { errors.push({ line: lineNum, message: `Invalid capacity_privileged: "${capPrivRaw}" (must be 0–999)` }); continue }
     if (isNaN(capNonPriv) || capNonPriv < 0 || capNonPriv > 999) { errors.push({ line: lineNum, message: `Invalid capacity_non_privileged: "${capNonPrivRaw}" (must be 0–999)` }); continue }

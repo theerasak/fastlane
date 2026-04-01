@@ -3,7 +3,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { getTcSessionFromCookies } from '@/lib/auth/tc-session'
 import { RegisterContent } from '@/components/register/RegisterContent'
 import { ToastContainer } from '@/components/ui/Toast'
-import { DEFAULT_SLOT_CAPACITY_PRIVILEGED, DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED } from '@/lib/constants'
+import { getDefaultSlotCapacity } from '@/lib/constants'
 import type { BookingPublicInfo } from '@/types/api'
 
 async function ensureCapacityExists(terminalId: string, date: string) {
@@ -19,8 +19,7 @@ async function ensureCapacityExists(terminalId: string, date: string) {
     terminal_id: terminalId,
     date,
     hour_slot: i,
-    capacity_privileged: DEFAULT_SLOT_CAPACITY_PRIVILEGED,
-    capacity_non_privileged: DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED,
+    ...getDefaultSlotCapacity(i),
   }))
   await supabase.from('terminal_capacity').insert(rows)
 }

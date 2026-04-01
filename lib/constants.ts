@@ -6,8 +6,19 @@ export const HOUR_LABELS = HOUR_SLOTS.map((h) => {
   return `${from}–${to}`
 })
 
-export const DEFAULT_SLOT_CAPACITY_PRIVILEGED = 1
-export const DEFAULT_SLOT_CAPACITY_NON_PRIVILEGED = 1
+// Default capacity per hour slot — adjust these four values to change defaults.
+// Even hours (00:00, 02:00, 04:00, …)
+export const DEFAULT_CAPACITY_EVEN_PRIVILEGED = 1
+export const DEFAULT_CAPACITY_EVEN_NON_PRIVILEGED = 1
+// Odd hours (01:00, 03:00, 05:00, …)
+export const DEFAULT_CAPACITY_ODD_PRIVILEGED = 2
+export const DEFAULT_CAPACITY_ODD_NON_PRIVILEGED = 0
+
+export function getDefaultSlotCapacity(hourSlot: number) {
+  return hourSlot % 2 === 0
+    ? { capacity_privileged: DEFAULT_CAPACITY_EVEN_PRIVILEGED, capacity_non_privileged: DEFAULT_CAPACITY_EVEN_NON_PRIVILEGED }
+    : { capacity_privileged: DEFAULT_CAPACITY_ODD_PRIVILEGED, capacity_non_privileged: DEFAULT_CAPACITY_ODD_NON_PRIVILEGED }
+}
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   'FILLING-IN': 'Filling In',
